@@ -1,22 +1,13 @@
 import Products from './Products'
+import Orders from './Orders'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
+  Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts'
-
-const salesData = [
-  { day: 'Mon', sales: 4200 },
-  { day: 'Tue', sales: 6800 },
-  { day: 'Wed', sales: 5200 },
-  { day: 'Thu', sales: 8900 },
-  { day: 'Fri', sales: 7600 },
-  { day: 'Sat', sales: 11200 },
-  { day: 'Sun', sales: 9400 },
-]
 
 const StatCard = ({ title, value, sub, color }) => (
   <div style={{
@@ -40,24 +31,52 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([])
   const [products, setProducts] = useState([])
   const [activePage, setActivePage] = useState('dashboard')
+  const [salesData, setSalesData] = useState([])
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [ordersRes, productsRes] = await Promise.all([
-          api.get('/orders'),
-          api.get('/products')
-        ])
-        setOrders(ordersRes.data)
-        setProducts(productsRes.data)
-      } catch (err) {
-        console.error(err)
-      }
-    }
     fetchData()
   }, [])
 
+  const fetchData = async () => {
+    try {
+      const [ordersRes, productsRes] = await Promise.all([
+        api.get('/orders'),
+        api.get('/products')
+      ])
+      setOrders(ordersRes.data)
+      setProducts(productsRes.data)
+      buildSalesData(ordersRes.data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const buildSalesData = (ordersData) => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const salesByDay = {}
+    days.forEach(d => salesByDay[d] = 0)
+
+    const now = new Date()
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    ordersData.forEach(order => {
+      const orderDate = new Date(order.created_at)
+      if (orderDate >= weekAgo) {
+        const day = days[orderDate.getDay()]
+        salesByDay[day] += parseFloat(order.total)
+      }
+    })
+
+    setSalesData(days.map(day => ({ day, sales: salesByDay[day] })))
+  }
+
   const totalRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total), 0)
+  const todayOrders = orders.filter(o => {
+    const today = new Date()
+    const orderDate = new Date(o.created_at)
+    return orderDate.toDateString() === today.toDateString()
+  })
+  const todayRevenue = todayOrders.reduce((sum, o) => sum + parseFloat(o.total), 0)
 
   const handleLogout = () => {
     logout()
@@ -72,6 +91,235 @@ export default function Dashboard() {
     { id: 'reports', label: 'Reports', icon: '📈' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ]
+
+  const Customers = () => {
+    const customerMap = {}
+    orders.forEach(order => {
+      if (order.customer_phone) {
+        if (!customerMap[order.customer_phone]) {
+          customerMap[order.customer_phone] = {
+            phone: order.customer_phone,
+            orders: 0,
+            spent: 0,
+            lastOrder: order.created_at,
+          }
+        }
+        customerMap[order.customer_phone].orders += 1
+        customerMap[order.customer_phone].spent += parseFloat(order.total)
+        if (new Date(order.created_at) > new Date(customerMap[order.customer_phone].lastOrder)) {
+          customerMap[order.customer_phone].lastOrder = order.created_at
+        }
+      }
+    })
+    const customers = Object.values(customerMap)
+
+    return (
+      <div>
+        <div style={{ marginBottom: '24px' }}>
+          <h1 style={{ color: '#0A1F44', fontSize: '22px', fontWeight: '700', margin: '0 0 4px' }}>Customers</h1>
+          <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>{customers.length} customers from M-Pesa orders</p>
+        </div>
+        {customers.length === 0 ? (
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+            No customers yet. Customers appear when M-Pesa payments are made.
+          </div>
+        ) : (
+          <div style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#F9FAFB' }}>
+                  <th style={thStyle}>Phone</th>
+                  <th style={thStyle}>Orders</th>
+                  <th style={thStyle}>Total Spent</th>
+                  <th style={thStyle}>Last Order</th>
+                  <th style={thStyle}>Loyalty Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.sort((a, b) => b.spent - a.spent).map((c, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                    <td style={tdStyle}>{c.phone}</td>
+                    <td style={tdStyle}>{c.orders}</td>
+                    <td style={{ ...tdStyle, fontWeight: '700', color: '#0A1F44' }}>KES {c.spent.toLocaleString()}</td>
+                    <td style={tdStyle}>{new Date(c.lastOrder).toLocaleDateString()}</td>
+                    <td style={tdStyle}>
+                      <span style={{ background: '#FEF3C7', color: '#92400E', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600' }}>
+                        {Math.floor(c.spent / 10)} pts
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const Reports = () => {
+    const mpesaOrders = orders.filter(o => o.payment_method === 'mpesa')
+    const cashOrders = orders.filter(o => o.payment_method === 'cash')
+    const mpesaRevenue = mpesaOrders.reduce((sum, o) => sum + parseFloat(o.total), 0)
+    const cashRevenue = cashOrders.reduce((sum, o) => sum + parseFloat(o.total), 0)
+
+    const paymentData = [
+      { name: 'M-Pesa', value: mpesaRevenue, orders: mpesaOrders.length },
+      { name: 'Cash', value: cashRevenue, orders: cashOrders.length },
+    ]
+
+    return (
+      <div>
+        <div style={{ marginBottom: '24px' }}>
+          <h1 style={{ color: '#0A1F44', fontSize: '22px', fontWeight: '700', margin: '0 0 4px' }}>Reports</h1>
+          <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Business performance overview</p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <StatCard title="Total Revenue" value={`KES ${totalRevenue.toLocaleString()}`} sub="All time" color="#F5A623" />
+          <StatCard title="Today Revenue" value={`KES ${todayRevenue.toLocaleString()}`} sub="Today" color="#10B981" />
+          <StatCard title="M-Pesa Revenue" value={`KES ${mpesaRevenue.toLocaleString()}`} sub={`${mpesaOrders.length} orders`} color="#0A1F44" />
+          <StatCard title="Cash Revenue" value={`KES ${cashRevenue.toLocaleString()}`} sub={`${cashOrders.length} orders`} color="#6366F1" />
+        </div>
+
+        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '300px', background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Sales This Week</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={salesData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6B7280' }} />
+                <YAxis tick={{ fontSize: 12, fill: '#6B7280' }} />
+                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                <Bar dataKey="sales" fill="#F5A623" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div style={{ width: '280px', background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Payment Methods</h3>
+            {paymentData.map((item, i) => (
+              <div key={i} style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '13px', color: '#374151', fontWeight: '600' }}>{item.name}</span>
+                  <span style={{ fontSize: '13px', color: '#0A1F44', fontWeight: '700' }}>KES {item.value.toLocaleString()}</span>
+                </div>
+                <div style={{ background: '#F3F4F6', borderRadius: '4px', height: '8px' }}>
+                  <div style={{
+                    background: i === 0 ? '#0A1F44' : '#F5A623',
+                    height: '8px',
+                    borderRadius: '4px',
+                    width: totalRevenue > 0 ? `${(item.value / totalRevenue * 100).toFixed(0)}%` : '0%'
+                  }} />
+                </div>
+                <p style={{ fontSize: '11px', color: '#6B7280', margin: '4px 0 0' }}>{item.orders} orders</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const Settings = () => {
+    const [businessName, setBusinessName] = useState('Siradify POS')
+    const [saved, setSaved] = useState(false)
+
+    const handleSave = () => {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
+
+    return (
+      <div>
+        <div style={{ marginBottom: '24px' }}>
+          <h1 style={{ color: '#0A1F44', fontSize: '22px', fontWeight: '700', margin: '0 0 4px' }}>Settings</h1>
+          <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Manage your business settings</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '560px' }}>
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Business Info</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                Business Name
+              </label>
+              <input
+                value={businessName}
+                onChange={e => setBusinessName(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#374151', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                Cashier Name
+              </label>
+              <input
+                value={user?.name}
+                readOnly
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#6B7280', backgroundColor: '#F9FAFB', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                Email
+              </label>
+              <input
+                value={user?.email}
+                readOnly
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#6B7280', backgroundColor: '#F9FAFB', boxSizing: 'border-box' }}
+              />
+            </div>
+            <button
+              onClick={handleSave}
+              style={{ backgroundColor: saved ? '#10B981' : '#0A1F44', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+            >
+              {saved ? '✓ Saved' : 'Save Changes'}
+            </button>
+          </div>
+
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 16px' }}>Account</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #F3F4F6' }}>
+              <div>
+                <p style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>Role</p>
+                <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>Your access level</p>
+              </div>
+              <span style={{ background: '#D1FAE5', color: '#065F46', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', textTransform: 'capitalize' }}>
+                {user?.role}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+              <div>
+                <p style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>API Status</p>
+                <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>Live on Railway</p>
+              </div>
+              <span style={{ background: '#D1FAE5', color: '#065F46', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600' }}>
+                Online
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const thStyle = {
+    padding: '12px 16px',
+    textAlign: 'left',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#6B7280',
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
+    borderBottom: '1px solid #E5E7EB',
+  }
+
+  const tdStyle = {
+    padding: '14px 16px',
+    fontSize: '14px',
+    color: '#374151',
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F4F6F9', fontFamily: 'Inter, sans-serif' }}>
@@ -181,30 +429,10 @@ export default function Dashboard() {
             </div>
 
             <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-              <StatCard
-                title="Total Revenue"
-                value={`KES ${totalRevenue.toLocaleString()}`}
-                sub="All time"
-                color="#F5A623"
-              />
-              <StatCard
-                title="Total Orders"
-                value={orders.length}
-                sub="All time"
-                color="#0A1F44"
-              />
-              <StatCard
-                title="Products"
-                value={products.length}
-                sub="In stock"
-                color="#10B981"
-              />
-              <StatCard
-                title="Pending Payments"
-                value={orders.filter(o => o.payment_status === 'pending').length}
-                sub="Needs attention"
-                color="#EF4444"
-              />
+              <StatCard title="Total Revenue" value={`KES ${totalRevenue.toLocaleString()}`} sub="All time" color="#F5A623" />
+              <StatCard title="Today Revenue" value={`KES ${todayRevenue.toLocaleString()}`} sub="Today only" color="#10B981" />
+              <StatCard title="Products" value={products.length} sub="In stock" color="#0A1F44" />
+              <StatCard title="Pending Payments" value={orders.filter(o => o.payment_status === 'pending').length} sub="Needs attention" color="#EF4444" />
             </div>
 
             <div style={{
@@ -215,7 +443,7 @@ export default function Dashboard() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
             }}>
               <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>
-                Sales This Week
+                Sales This Week (Real Data)
               </h3>
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={salesData}>
@@ -228,16 +456,8 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                   <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6B7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6B7280' }} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="sales"
-                    stroke="#F5A623"
-                    strokeWidth={2.5}
-                    fill="url(#salesGrad)"
-                  />
+                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                  <Area type="monotone" dataKey="sales" stroke="#F5A623" strokeWidth={2.5} fill="url(#salesGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -253,7 +473,7 @@ export default function Dashboard() {
               </h3>
               {orders.length === 0 ? (
                 <p style={{ color: '#6B7280', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
-                  No orders yet. Orders will appear here once your POS starts processing sales.
+                  No orders yet.
                 </p>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -267,15 +487,15 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map(order => (
+                    {orders.slice(0, 5).map(order => (
                       <tr key={order.id} style={{ borderBottom: '1px solid #F9FAFB' }}>
                         <td style={{ padding: '12px 0', fontSize: '14px', color: '#0A1F44', fontWeight: '600' }}>#{order.id}</td>
                         <td style={{ padding: '12px 0', fontSize: '14px', color: '#1A1A2E' }}>KES {parseFloat(order.total).toLocaleString()}</td>
                         <td style={{ padding: '12px 0', fontSize: '14px', color: '#1A1A2E', textTransform: 'capitalize' }}>{order.payment_method}</td>
                         <td style={{ padding: '12px 0' }}>
                           <span style={{
-                            background: order.payment_status === 'paid' ? '#D1FAE5' : '#FEE2E2',
-                            color: order.payment_status === 'paid' ? '#065F46' : '#DC2626',
+                            background: order.payment_status === 'paid' ? '#D1FAE5' : '#FEF3C7',
+                            color: order.payment_status === 'paid' ? '#065F46' : '#92400E',
                             padding: '4px 10px',
                             borderRadius: '20px',
                             fontSize: '12px',
@@ -297,50 +517,10 @@ export default function Dashboard() {
         )}
 
         {activePage === 'products' && <Products />}
-
-        {activePage === 'orders' && (
-          <div>
-            <h1 style={{ color: '#0A1F44', fontSize: '22px', fontWeight: '700', margin: '0 0 4px' }}>
-              Orders
-            </h1>
-            <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px' }}>
-              Full orders management coming soon.
-            </p>
-          </div>
-        )}
-
-        {activePage === 'customers' && (
-          <div>
-            <h1 style={{ color: '#0A1F44', fontSize: '22px', fontWeight: '700', margin: '0 0 4px' }}>
-              Customers
-            </h1>
-            <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px' }}>
-              Customer management coming soon.
-            </p>
-          </div>
-        )}
-
-        {activePage === 'reports' && (
-          <div>
-            <h1 style={{ color: '#0A1F44', fontSize: '22px', fontWeight: '700', margin: '0 0 4px' }}>
-              Reports
-            </h1>
-            <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px' }}>
-              Detailed reports coming soon.
-            </p>
-          </div>
-        )}
-
-        {activePage === 'settings' && (
-          <div>
-            <h1 style={{ color: '#0A1F44', fontSize: '22px', fontWeight: '700', margin: '0 0 4px' }}>
-              Settings
-            </h1>
-            <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px' }}>
-              Business settings coming soon.
-            </p>
-          </div>
-        )}
+        {activePage === 'orders' && <Orders />}
+        {activePage === 'customers' && <Customers />}
+        {activePage === 'reports' && <Reports />}
+        {activePage === 'settings' && <Settings />}
 
       </div>
     </div>

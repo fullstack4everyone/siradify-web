@@ -10,4 +10,4 @@ export const COLORS = {
   danger: '#EF4444',
 }
 
-export const API_URL = 'http://localhost:5000/api'
+export const API_URL = 'https://siradify-api-production.up.railway.app/api'
