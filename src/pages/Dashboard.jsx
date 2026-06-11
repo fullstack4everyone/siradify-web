@@ -35,7 +35,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [activePage])
 
   const fetchData = async () => {
     try {
@@ -241,9 +241,7 @@ export default function Dashboard() {
           <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Business Info</h3>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
-                Business Name
-              </label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Business Name</label>
               <input
                 value={businessName}
                 onChange={e => setBusinessName(e.target.value)}
@@ -251,9 +249,7 @@ export default function Dashboard() {
               />
             </div>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
-                Cashier Name
-              </label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Cashier Name</label>
               <input
                 value={user?.name}
                 readOnly
@@ -261,9 +257,7 @@ export default function Dashboard() {
               />
             </div>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
-                Email
-              </label>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email</label>
               <input
                 value={user?.email}
                 readOnly

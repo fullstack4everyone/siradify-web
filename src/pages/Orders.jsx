@@ -5,6 +5,8 @@ export default function Orders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
+  const [updating, setUpdating] = useState(null)
+  const [filter, setFilter] = useState('all')
 
   useEffect(() => {
     fetchOrders()
@@ -30,6 +32,26 @@ export default function Orders() {
     }
   }
 
+  const markAsPaid = async (orderId) => {
+    setUpdating(orderId)
+    try {
+      await api.put(`/orders/${orderId}/payment`, { payment_status: 'paid' })
+      setOrders(orders.map(o =>
+        o.id === orderId ? { ...o, payment_status: 'paid' } : o
+      ))
+      if (selected && selected.order.id === orderId) {
+        setSelected({
+          ...selected,
+          order: { ...selected.order, payment_status: 'paid' }
+        })
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setUpdating(null)
+    }
+  }
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('en-KE', {
       day: '2-digit',
@@ -40,11 +62,17 @@ export default function Orders() {
     })
   }
 
-  const getStatusColor = (status) => {
-    if (status === 'paid') return { bg: '#D1FAE5', text: '#065F46' }
-    if (status === 'pending') return { bg: '#FEF3C7', text: '#92400E' }
-    return { bg: '#F3F4F6', text: '#374151' }
-  }
+  const filteredOrders = orders.filter(o => {
+    if (filter === 'all') return true
+    if (filter === 'pending') return o.payment_status === 'pending'
+    if (filter === 'paid') return o.payment_status === 'paid'
+    if (filter === 'mpesa') return o.payment_method === 'mpesa'
+    if (filter === 'cash') return o.payment_method === 'cash'
+    return true
+  })
+
+  const pendingCount = orders.filter(o => o.payment_status === 'pending').length
+  const totalRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total), 0)
 
   return (
     <div style={styles.container}>
@@ -53,6 +81,50 @@ export default function Orders() {
           <h1 style={styles.title}>Orders</h1>
           <p style={styles.subtitle}>{orders.length} total orders</p>
         </div>
+        {pendingCount > 0 && (
+          <div style={styles.pendingAlert}>
+            <span style={styles.pendingAlertDot} />
+            {pendingCount} payment{pendingCount > 1 ? 's' : ''} pending approval
+          </div>
+        )}
+      </div>
+
+      <div style={styles.statsRow}>
+        <div style={styles.statCard}>
+          <p style={styles.statLabel}>Total Revenue</p>
+          <p style={styles.statValue}>KES {totalRevenue.toLocaleString()}</p>
+        </div>
+        <div style={styles.statCard}>
+          <p style={styles.statLabel}>Total Orders</p>
+          <p style={styles.statValue}>{orders.length}</p>
+        </div>
+        <div style={{ ...styles.statCard, borderLeftColor: '#EF4444' }}>
+          <p style={styles.statLabel}>Pending</p>
+          <p style={{ ...styles.statValue, color: '#EF4444' }}>{pendingCount}</p>
+        </div>
+        <div style={{ ...styles.statCard, borderLeftColor: '#10B981' }}>
+          <p style={styles.statLabel}>Paid</p>
+          <p style={{ ...styles.statValue, color: '#10B981' }}>{orders.filter(o => o.payment_status === 'paid').length}</p>
+        </div>
+      </div>
+
+      <div style={styles.filterRow}>
+        {['all', 'pending', 'paid', 'mpesa', 'cash'].map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            style={{
+              ...styles.filterBtn,
+              backgroundColor: filter === f ? '#0A1F44' : '#fff',
+              color: filter === f ? '#fff' : '#374151',
+            }}
+          >
+            {f === 'all' ? 'All Orders' :
+             f === 'pending' ? `Pending (${pendingCount})` :
+             f === 'paid' ? 'Paid' :
+             f === 'mpesa' ? 'M-Pesa' : 'Cash'}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -60,99 +132,108 @@ export default function Orders() {
       ) : (
         <div style={styles.body}>
           <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr style={styles.tableHead}>
-                  <th style={styles.th}>Order ID</th>
-                  <th style={styles.th}>Date</th>
-                  <th style={styles.th}>Payment</th>
-                  <th style={styles.th}>Customer</th>
-                  <th style={styles.th}>Total</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map(order => {
-                  const colors = getStatusColor(order.payment_status)
-                  return (
+            {filteredOrders.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+                No orders found.
+              </div>
+            ) : (
+              <table style={styles.table}>
+                <thead>
+                  <tr style={styles.tableHead}>
+                    <th style={styles.th}>Order ID</th>
+                    <th style={styles.th}>Date</th>
+                    <th style={styles.th}>Payment</th>
+                    <th style={styles.th}>Customer</th>
+                    <th style={styles.th}>Total</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.map(order => (
                     <tr key={order.id} style={styles.tableRow}>
                       <td style={styles.td}>#{order.id}</td>
                       <td style={styles.td}>{formatDate(order.created_at)}</td>
                       <td style={styles.td}>
-                        <span style={styles.paymentBadge}>
-                          {order.payment_method === 'mpesa' ? '📱 M-Pesa' : '💵 Cash'}
-                        </span>
+                        {order.payment_method === 'mpesa' ? '📱 M-Pesa' : '💵 Cash'}
                       </td>
                       <td style={styles.td}>
                         {order.customer_phone || 'Walk-in'}
                       </td>
-                      <td style={styles.tdBold}>
+                      <td style={{ ...styles.td, fontWeight: '700', color: '#0A1F44' }}>
                         KES {parseFloat(order.total).toLocaleString()}
                       </td>
                       <td style={styles.td}>
                         <span style={{
-                          ...styles.statusBadge,
-                          backgroundColor: colors.bg,
-                          color: colors.text,
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          backgroundColor: order.payment_status === 'paid' ? '#D1FAE5' : '#FEF3C7',
+                          color: order.payment_status === 'paid' ? '#065F46' : '#92400E',
                         }}>
                           {order.payment_status === 'paid' ? '✓ Paid' : '⏳ Pending'}
                         </span>
                       </td>
                       <td style={styles.td}>
-                        <button
-                          style={styles.viewBtn}
-                          onClick={() => fetchOrderDetails(order.id)}
-                        >
-                          View
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            style={styles.viewBtn}
+                            onClick={() => fetchOrderDetails(order.id)}
+                          >
+                            View
+                          </button>
+                          {order.payment_status === 'pending' && (
+                            <button
+                              style={styles.markPaidBtn}
+                              onClick={() => markAsPaid(order.id)}
+                              disabled={updating === order.id}
+                            >
+                              {updating === order.id ? '...' : 'Mark Paid'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
           {selected && (
             <div style={styles.detailPanel}>
               <div style={styles.detailHeader}>
                 <h3 style={styles.detailTitle}>Order #{selected.order.id}</h3>
-                <button
-                  style={styles.closeBtn}
-                  onClick={() => setSelected(null)}
-                >
-                  ✕
-                </button>
+                <button style={styles.closeBtn} onClick={() => setSelected(null)}>✕</button>
               </div>
               <div style={styles.detailInfo}>
                 <div style={styles.detailRow}>
                   <span style={styles.detailLabel}>Date</span>
-                  <span style={styles.detailValue}>
-                    {formatDate(selected.order.created_at)}
-                  </span>
+                  <span style={styles.detailValue}>{formatDate(selected.order.created_at)}</span>
                 </div>
                 <div style={styles.detailRow}>
                   <span style={styles.detailLabel}>Payment</span>
-                  <span style={styles.detailValue}>
-                    {selected.order.payment_method}
-                  </span>
+                  <span style={styles.detailValue}>{selected.order.payment_method}</span>
                 </div>
                 <div style={styles.detailRow}>
                   <span style={styles.detailLabel}>Status</span>
-                  <span style={styles.detailValue}>
-                    {selected.order.payment_status}
+                  <span style={{
+                    ...styles.detailValue,
+                    color: selected.order.payment_status === 'paid' ? '#065F46' : '#92400E',
+                    fontWeight: '700',
+                  }}>
+                    {selected.order.payment_status === 'paid' ? '✓ Paid' : '⏳ Pending'}
                   </span>
                 </div>
                 {selected.order.customer_phone && (
                   <div style={styles.detailRow}>
                     <span style={styles.detailLabel}>Customer</span>
-                    <span style={styles.detailValue}>
-                      {selected.order.customer_phone}
-                    </span>
+                    <span style={styles.detailValue}>{selected.order.customer_phone}</span>
                   </div>
                 )}
               </div>
+
               <div style={styles.detailDivider} />
               <h4 style={styles.itemsTitle}>Items</h4>
               {selected.items && selected.items.map((item, index) => (
@@ -173,6 +254,16 @@ export default function Orders() {
                   KES {parseFloat(selected.order.total).toLocaleString()}
                 </span>
               </div>
+
+              {selected.order.payment_status === 'pending' && (
+                <button
+                  style={{ ...styles.markPaidBtn, width: '100%', marginTop: '16px', padding: '12px', fontSize: '14px' }}
+                  onClick={() => markAsPaid(selected.order.id)}
+                  disabled={updating === selected.order.id}
+                >
+                  {updating === selected.order.id ? 'Updating...' : '✓ Mark as Paid'}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -191,7 +282,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px',
+    marginBottom: '20px',
   },
   title: {
     fontSize: '24px',
@@ -203,6 +294,65 @@ const styles = {
     fontSize: '14px',
     color: '#6B7280',
     margin: '4px 0 0 0',
+  },
+  pendingAlert: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: '600',
+  },
+  pendingAlertDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#F59E0B',
+    display: 'inline-block',
+  },
+  statsRow: {
+    display: 'flex',
+    gap: '16px',
+    marginBottom: '20px',
+    flexWrap: 'wrap',
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '140px',
+    backgroundColor: '#fff',
+    borderRadius: '10px',
+    padding: '16px 20px',
+    borderLeft: '4px solid #F5A623',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+  },
+  statLabel: {
+    fontSize: '12px',
+    color: '#6B7280',
+    margin: '0 0 4px',
+    fontWeight: '500',
+  },
+  statValue: {
+    fontSize: '20px',
+    fontWeight: '700',
+    color: '#0A1F44',
+    margin: 0,
+  },
+  filterRow: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '20px',
+    flexWrap: 'wrap',
+  },
+  filterBtn: {
+    padding: '7px 16px',
+    borderRadius: '20px',
+    border: '1px solid #E5E7EB',
+    fontSize: '13px',
+    fontWeight: '500',
+    cursor: 'pointer',
   },
   loading: {
     textAlign: 'center',
@@ -219,7 +369,7 @@ const styles = {
     backgroundColor: '#fff',
     borderRadius: '12px',
     overflow: 'hidden',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
   },
   table: {
     width: '100%',
@@ -240,34 +390,27 @@ const styles = {
   },
   tableRow: {
     borderBottom: '1px solid #F3F4F6',
-    cursor: 'pointer',
   },
   td: {
     padding: '14px 16px',
     fontSize: '14px',
     color: '#374151',
   },
-  tdBold: {
-    padding: '14px 16px',
-    fontSize: '14px',
-    color: '#0A1F44',
-    fontWeight: '700',
-  },
-  paymentBadge: {
-    fontSize: '13px',
-    color: '#374151',
-  },
-  statusBadge: {
-    padding: '4px 10px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '600',
-  },
   viewBtn: {
     backgroundColor: '#0A1F44',
     color: '#fff',
     border: 'none',
-    padding: '6px 14px',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  markPaidBtn: {
+    backgroundColor: '#10B981',
+    color: '#fff',
+    border: 'none',
+    padding: '6px 12px',
     borderRadius: '6px',
     fontSize: '12px',
     fontWeight: '600',
@@ -278,7 +421,7 @@ const styles = {
     backgroundColor: '#fff',
     borderRadius: '12px',
     padding: '20px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
   },
   detailHeader: {
     display: 'flex',
@@ -303,7 +446,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
-    marginBottom: '4px',
   },
   detailRow: {
     display: 'flex',
