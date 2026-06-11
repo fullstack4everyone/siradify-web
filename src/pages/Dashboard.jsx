@@ -55,10 +55,8 @@ export default function Dashboard() {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const salesByDay = {}
     days.forEach(d => salesByDay[d] = 0)
-
     const now = new Date()
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-
     ordersData.forEach(order => {
       const orderDate = new Date(order.created_at)
       if (orderDate >= weekAgo) {
@@ -66,7 +64,6 @@ export default function Dashboard() {
         salesByDay[day] += parseFloat(order.total)
       }
     })
-
     setSalesData(days.map(day => ({ day, sales: salesByDay[day] })))
   }
 
@@ -162,7 +159,6 @@ export default function Dashboard() {
     const cashOrders = orders.filter(o => o.payment_method === 'cash')
     const mpesaRevenue = mpesaOrders.reduce((sum, o) => sum + parseFloat(o.total), 0)
     const cashRevenue = cashOrders.reduce((sum, o) => sum + parseFloat(o.total), 0)
-
     const paymentData = [
       { name: 'M-Pesa', value: mpesaRevenue, orders: mpesaOrders.length },
       { name: 'Cash', value: cashRevenue, orders: cashOrders.length },
@@ -174,14 +170,12 @@ export default function Dashboard() {
           <h1 style={{ color: '#0A1F44', fontSize: '22px', fontWeight: '700', margin: '0 0 4px' }}>Reports</h1>
           <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Business performance overview</p>
         </div>
-
         <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
           <StatCard title="Total Revenue" value={`KES ${totalRevenue.toLocaleString()}`} sub="All time" color="#F5A623" />
           <StatCard title="Today Revenue" value={`KES ${todayRevenue.toLocaleString()}`} sub="Today" color="#10B981" />
           <StatCard title="M-Pesa Revenue" value={`KES ${mpesaRevenue.toLocaleString()}`} sub={`${mpesaOrders.length} orders`} color="#0A1F44" />
           <StatCard title="Cash Revenue" value={`KES ${cashRevenue.toLocaleString()}`} sub={`${cashOrders.length} orders`} color="#6366F1" />
         </div>
-
         <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '300px', background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Sales This Week</h3>
@@ -195,7 +189,6 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-
           <div style={{ width: '280px', background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Payment Methods</h3>
             {paymentData.map((item, i) => (
@@ -224,6 +217,54 @@ export default function Dashboard() {
   const Settings = () => {
     const [businessName, setBusinessName] = useState('Siradify POS')
     const [saved, setSaved] = useState(false)
+    const [staff, setStaff] = useState([])
+    const [showAddStaff, setShowAddStaff] = useState(false)
+    const [newName, setNewName] = useState('')
+    const [newEmail, setNewEmail] = useState('')
+    const [newPassword, setNewPassword] = useState('')
+    const [newRole, setNewRole] = useState('cashier')
+    const [adding, setAdding] = useState(false)
+    const [addError, setAddError] = useState('')
+
+    useEffect(() => {
+      fetchStaff()
+    }, [])
+
+    const fetchStaff = async () => {
+      try {
+        const res = await api.get('/auth/staff')
+        setStaff(res.data)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    const handleAddStaff = async () => {
+      if (!newName || !newEmail || !newPassword) {
+        setAddError('All fields are required')
+        return
+      }
+      setAdding(true)
+      setAddError('')
+      try {
+        await api.post('/auth/register-cashier', {
+          name: newName,
+          email: newEmail,
+          password: newPassword,
+          role: newRole,
+        })
+        setNewName('')
+        setNewEmail('')
+        setNewPassword('')
+        setNewRole('cashier')
+        setShowAddStaff(false)
+        fetchStaff()
+      } catch (err) {
+        setAddError(err.response?.data?.message || 'Could not create account')
+      } finally {
+        setAdding(false)
+      }
+    }
 
     const handleSave = () => {
       setSaved(true)
@@ -237,62 +278,124 @@ export default function Dashboard() {
           <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Manage your business settings</p>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '560px' }}>
-          <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-            <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Business Info</h3>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Business Name</label>
-              <input
-                value={businessName}
-                onChange={e => setBusinessName(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#374151', boxSizing: 'border-box' }}
-              />
+        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+
+          <div style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Business Info</h3>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Business Name</label>
+                <input value={businessName} onChange={e => setBusinessName(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#374151', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Cashier Name</label>
+                <input value={user?.name} readOnly style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#6B7280', backgroundColor: '#F9FAFB', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email</label>
+                <input value={user?.email} readOnly style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#6B7280', backgroundColor: '#F9FAFB', boxSizing: 'border-box' }} />
+              </div>
+              <button onClick={handleSave} style={{ backgroundColor: saved ? '#10B981' : '#0A1F44', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                {saved ? '✓ Saved' : 'Save Changes'}
+              </button>
             </div>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Cashier Name</label>
-              <input
-                value={user?.name}
-                readOnly
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#6B7280', backgroundColor: '#F9FAFB', boxSizing: 'border-box' }}
-              />
+
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 16px' }}>Account</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #F3F4F6' }}>
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>Role</p>
+                  <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>Your access level</p>
+                </div>
+                <span style={{ background: '#D1FAE5', color: '#065F46', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', textTransform: 'capitalize' }}>{user?.role}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>API Status</p>
+                  <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>Live on Railway</p>
+                </div>
+                <span style={{ background: '#D1FAE5', color: '#065F46', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600' }}>Online</span>
+              </div>
             </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email</label>
-              <input
-                value={user?.email}
-                readOnly
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', color: '#6B7280', backgroundColor: '#F9FAFB', boxSizing: 'border-box' }}
-              />
-            </div>
-            <button
-              onClick={handleSave}
-              style={{ backgroundColor: saved ? '#10B981' : '#0A1F44', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
-            >
-              {saved ? '✓ Saved' : 'Save Changes'}
-            </button>
           </div>
 
-          <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-            <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 16px' }}>Account</h3>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #F3F4F6' }}>
-              <div>
-                <p style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>Role</p>
-                <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>Your access level</p>
+          <div style={{ flex: 1, minWidth: '300px' }}>
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: 0 }}>Staff Management</h3>
+                <button
+                  onClick={() => { setShowAddStaff(!showAddStaff); setAddError('') }}
+                  style={{ backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  {showAddStaff ? 'Cancel' : '+ Add Staff'}
+                </button>
               </div>
-              <span style={{ background: '#D1FAE5', color: '#065F46', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', textTransform: 'capitalize' }}>
-                {user?.role}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
-              <div>
-                <p style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>API Status</p>
-                <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>Live on Railway</p>
-              </div>
-              <span style={{ background: '#D1FAE5', color: '#065F46', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600' }}>
-                Online
-              </span>
+
+              {showAddStaff && (
+                <div style={{ backgroundColor: '#F9FAFB', borderRadius: '10px', padding: '16px', marginBottom: '20px', border: '1px solid #E5E7EB' }}>
+                  <h4 style={{ color: '#0A1F44', fontSize: '14px', fontWeight: '600', margin: '0 0 14px' }}>New Staff Account</h4>
+                  {addError && (
+                    <div style={{ backgroundColor: '#FEE2E2', color: '#DC2626', padding: '8px 12px', borderRadius: '6px', fontSize: '13px', marginBottom: '12px' }}>
+                      {addError}
+                    </div>
+                  )}
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Full Name</label>
+                    <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Fatima Hassan" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', fontSize: '13px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Email</label>
+                    <input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="e.g. fatima@siradify.com" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', fontSize: '13px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Password</label>
+                    <input value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Set a password" type="password" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', fontSize: '13px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Role</label>
+                    <select value={newRole} onChange={e => setNewRole(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', fontSize: '13px', boxSizing: 'border-box' }}>
+                      <option value="cashier">Cashier</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleAddStaff}
+                    disabled={adding}
+                    style={{ width: '100%', backgroundColor: '#10B981', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', opacity: adding ? 0.6 : 1 }}
+                  >
+                    {adding ? 'Creating...' : 'Create Account'}
+                  </button>
+                </div>
+              )}
+
+              {staff.length === 0 ? (
+                <p style={{ color: '#6B7280', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>No staff yet.</p>
+              ) : (
+                <div>
+                  {staff.map((member, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: i < staff.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
+                      <div>
+                        <p style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: 0 }}>{member.name}</p>
+                        <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>{member.email}</p>
+                      </div>
+                      <span style={{
+                        background: member.role === 'admin' ? '#EDE9FE' : '#DBEAFE',
+                        color: member.role === 'admin' ? '#5B21B6' : '#1D4ED8',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        textTransform: 'capitalize'
+                      }}>
+                        {member.role}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+
         </div>
       </div>
     )
