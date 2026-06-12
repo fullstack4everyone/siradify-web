@@ -7,7 +7,7 @@ export default function Products() {
   const [showForm, setShowForm] = useState(false)
   const [editProduct, setEditProduct] = useState(null)
   const [form, setForm] = useState({
-    name: '', price: '', stock: '', category: ''
+    name: '', price: '', stock: '', category: '', image_url: ''
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -39,7 +39,7 @@ export default function Products() {
         await api.post('/products', form)
         setSuccess('Product added successfully')
       }
-      setForm({ name: '', price: '', stock: '', category: '' })
+      setForm({ name: '', price: '', stock: '', category: '', image_url: '' })
       setShowForm(false)
       setEditProduct(null)
       fetchProducts()
@@ -54,7 +54,8 @@ export default function Products() {
       name: product.name,
       price: product.price,
       stock: product.stock,
-      category: product.category
+      category: product.category,
+      image_url: product.image_url || ''
     })
     setShowForm(true)
   }
@@ -81,7 +82,14 @@ export default function Products() {
     color: '#1A1A2E'
   }
 
-  const categories = ['food', 'drinks', 'electronics', 'clothing', 'general']
+  const categories = ['food', 'drinks', 'electronics', 'clothing', 'other']
+
+  const getEmoji = (category) => {
+    if (category === 'drinks') return '🥤'
+    if (category === 'food') return '🍽️'
+    if (category === 'electronics') return '📱'
+    return '📦'
+  }
 
   return (
     <div>
@@ -96,14 +104,14 @@ export default function Products() {
             Products
           </h1>
           <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>
-            Manage your product inventory.
+            {products.length} products in inventory
           </p>
         </div>
         <button
           onClick={() => {
             setShowForm(!showForm)
             setEditProduct(null)
-            setForm({ name: '', price: '', stock: '', category: '' })
+            setForm({ name: '', price: '', stock: '', category: '', image_url: '' })
           }}
           style={{
             background: '#F5A623',
@@ -201,7 +209,31 @@ export default function Products() {
                   ))}
                 </select>
               </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#1A1A2E', marginBottom: '6px' }}>
+                  Image URL (optional)
+                </label>
+                <input
+                  style={inputStyle}
+                  value={form.image_url}
+                  onChange={e => setForm({ ...form, image_url: e.target.value })}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
             </div>
+
+            {form.image_url && (
+              <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img
+                  src={form.image_url}
+                  alt="preview"
+                  style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #E5E7EB' }}
+                  onError={e => e.target.style.display = 'none'}
+                />
+                <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>Image preview</p>
+              </div>
+            )}
+
             <button
               type="submit"
               style={{
@@ -235,6 +267,7 @@ export default function Products() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                <th style={{ textAlign: 'left', padding: '10px 0', fontSize: '12px', color: '#6B7280', fontWeight: '600' }}>IMAGE</th>
                 <th style={{ textAlign: 'left', padding: '10px 0', fontSize: '12px', color: '#6B7280', fontWeight: '600' }}>NAME</th>
                 <th style={{ textAlign: 'left', padding: '10px 0', fontSize: '12px', color: '#6B7280', fontWeight: '600' }}>PRICE</th>
                 <th style={{ textAlign: 'left', padding: '10px 0', fontSize: '12px', color: '#6B7280', fontWeight: '600' }}>STOCK</th>
@@ -245,6 +278,32 @@ export default function Products() {
             <tbody>
               {products.map(product => (
                 <tr key={product.id} style={{ borderBottom: '1px solid #F9FAFB' }}>
+                  <td style={{ padding: '12px 0' }}>
+                    {product.image_url ? (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #E5E7EB' }}
+                        onError={e => {
+                          e.target.style.display = 'none'
+                          e.target.nextSibling.style.display = 'flex'
+                        }}
+                      />
+                    ) : null}
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '8px',
+                      backgroundColor: '#F9FAFB',
+                      display: product.image_url ? 'none' : 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '22px',
+                      border: '1px solid #E5E7EB'
+                    }}>
+                      {getEmoji(product.category)}
+                    </div>
+                  </td>
                   <td style={{ padding: '12px 0', fontSize: '14px', color: '#0A1F44', fontWeight: '600' }}>{product.name}</td>
                   <td style={{ padding: '12px 0', fontSize: '14px', color: '#1A1A2E' }}>KES {parseFloat(product.price).toLocaleString()}</td>
                   <td style={{ padding: '12px 0' }}>
