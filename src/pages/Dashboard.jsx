@@ -29,10 +29,10 @@ const MpesaModal = ({ total, onClose, onConfirm }) => {
   const [phone, setPhone] = useState('')
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-      <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '380px' }}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '380px', boxSizing: 'border-box' }}>
         <h3 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 6px' }}>M-Pesa Payment</h3>
         <p style={{ color: '#F5A623', fontSize: '16px', fontWeight: '700', margin: '0 0 20px' }}>Total: KES {total.toLocaleString()}</p>
-        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Customer Phone Number</label>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Customer Phone Number</label>
         <input
           value={phone}
           onChange={e => setPhone(e.target.value)}
@@ -40,15 +40,24 @@ const MpesaModal = ({ total, onClose, onConfirm }) => {
           type="tel"
           inputMode="numeric"
           autoFocus
-          style={{ width: '100%', padding: '14px', borderRadius: '8px', border: '2px solid #0A1F44', fontSize: '18px', marginBottom: '16px', boxSizing: 'border-box', letterSpacing: '2px' }}
+          style={{
+            width: '100%',
+            padding: '16px',
+            borderRadius: '8px',
+            border: '2px solid #0A1F44',
+            fontSize: '20px',
+            marginBottom: '16px',
+            boxSizing: 'border-box',
+            letterSpacing: '2px',
+            minHeight: '60px',
+            display: 'block',
+            outline: 'none',
+          }}
         />
-        <button
-          onClick={() => { if (phone) onConfirm(phone) }}
-          style={{ width: '100%', backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}
-        >
+        <button onClick={() => { if (phone) onConfirm(phone) }} style={{ width: '100%', backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '16px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>
           Send M-Pesa Request
         </button>
-        <button onClick={onClose} style={{ width: '100%', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+        <button onClick={onClose} style={{ width: '100%', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', padding: '16px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -64,7 +73,6 @@ export default function Dashboard() {
   const [activePage, setActivePage] = useState(user?.role === 'cashier' ? 'pos' : 'dashboard')
   const [salesData, setSalesData] = useState([])
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
-
   const [cart, setCart] = useState([])
   const [placing, setPlacing] = useState(false)
   const [showMpesaModal, setShowMpesaModal] = useState(false)
@@ -76,22 +84,15 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  useEffect(() => {
-    fetchData()
-  }, [activePage])
+  useEffect(() => { fetchData() }, [activePage])
 
   const fetchData = async () => {
     try {
-      const [ordersRes, productsRes] = await Promise.all([
-        api.get('/orders'),
-        api.get('/products')
-      ])
+      const [ordersRes, productsRes] = await Promise.all([api.get('/orders'), api.get('/products')])
       setOrders(ordersRes.data)
       setProducts(productsRes.data)
       buildSalesData(ordersRes.data)
-    } catch (err) {
-      console.error(err)
-    }
+    } catch (err) { console.error(err) }
   }
 
   const buildSalesData = (ordersData) => {
@@ -111,19 +112,12 @@ export default function Dashboard() {
   }
 
   const totalRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total), 0)
-  const todayOrders = orders.filter(o => {
-    const today = new Date()
-    const orderDate = new Date(o.created_at)
-    return orderDate.toDateString() === today.toDateString()
-  })
+  const todayOrders = orders.filter(o => new Date(o.created_at).toDateString() === new Date().toDateString())
   const todayRevenue = todayOrders.reduce((sum, o) => sum + parseFloat(o.total), 0)
   const lowStockProducts = products.filter(p => parseInt(p.stock) <= 10)
   const pendingCount = orders.filter(o => o.payment_status === 'pending').length
 
-  const handleLogout = () => {
-    logout()
-    navigate('/')
-  }
+  const handleLogout = () => { logout(); navigate('/') }
 
   const addToCart = (product) => {
     const existing = cart.find(item => item.id === product.id)
@@ -143,10 +137,7 @@ export default function Dashboard() {
     }
   }
 
-  const removeItemCompletely = (productId) => {
-    setCart(cart.filter(item => item.id !== productId))
-  }
-
+  const removeItemCompletely = (productId) => setCart(cart.filter(item => item.id !== productId))
   const getTotal = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const getCartQuantity = (productId) => { const item = cart.find(i => i.id === productId); return item ? item.quantity : 0 }
   const getTotalItems = () => cart.reduce((sum, item) => sum + item.quantity, 0)
@@ -161,11 +152,8 @@ export default function Dashboard() {
       setCart([])
       setPosReceipt({ order: res.data.order, items: res.data.items })
       fetchData()
-    } catch (err) {
-      alert('Could not place order')
-    } finally {
-      setPlacing(false)
-    }
+    } catch (err) { alert('Could not place order') }
+    finally { setPlacing(false) }
   }
 
   const processMpesaPayment = async (phone) => {
@@ -179,11 +167,8 @@ export default function Dashboard() {
       setCart([])
       setPosReceipt({ order: { ...orderRes.data.order, payment_status: 'pending' }, items: orderRes.data.items })
       fetchData()
-    } catch (err) {
-      alert('Could not process M-Pesa payment')
-    } finally {
-      setPlacing(false)
-    }
+    } catch (err) { alert('Could not process M-Pesa payment') }
+    finally { setPlacing(false) }
   }
 
   const handlePrintReceipt = (order, items) => {
@@ -192,48 +177,44 @@ export default function Dashboard() {
     const loyaltyPoints = Math.floor(total / 10)
     const itemsHTML = items.map(item => `
       <tr>
-        <td style="padding: 6px 0; font-size: 13px;">${item.name}</td>
-        <td style="padding: 6px 0; font-size: 13px; text-align: center;">${item.quantity}</td>
-        <td style="padding: 6px 0; font-size: 13px; text-align: right;">${parseFloat(item.price).toLocaleString()}</td>
-        <td style="padding: 6px 0; font-size: 13px; font-weight: 700; text-align: right;">${(parseFloat(item.price) * item.quantity).toLocaleString()}</td>
+        <td style="padding:6px 0;font-size:13px;">${item.name}</td>
+        <td style="padding:6px 0;font-size:13px;text-align:center;">${item.quantity}</td>
+        <td style="padding:6px 0;font-size:13px;text-align:right;">${parseFloat(item.price).toLocaleString()}</td>
+        <td style="padding:6px 0;font-size:13px;font-weight:700;text-align:right;">${(parseFloat(item.price) * item.quantity).toLocaleString()}</td>
       </tr>
     `).join('')
-    printWindow.document.write(`
-      <!DOCTYPE html><html><head><title>Receipt</title>
-      <style>* { margin:0;padding:0;box-sizing:border-box; } body { font-family:'Courier New',monospace; }
-      .receipt { width:360px;margin:0 auto;padding:20px; }
-      .header { background:#0A1F44;color:#fff;padding:20px;text-align:center;border-radius:8px 8px 0 0; }
-      .divider { border:none;border-top:2px solid #F5A623;margin:12px 0; }
-      table { width:100%;border-collapse:collapse;margin:10px 0; }
-      th { font-size:10px;color:#666;text-transform:uppercase;padding:6px 0;border-bottom:1px solid #eee; }
-      .grand { display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:2px solid #F5A623; }
-      .loyalty { background:#FEF3C7;border-radius:8px;padding:10px;margin:12px 0;text-align:center; }
-      .footer { text-align:center;margin-top:16px;padding-top:12px;border-top:1px dashed #ddd; }
-      @media print { body { print-color-adjust:exact;-webkit-print-color-adjust:exact; } }
-      </style></head><body>
-      <div class="receipt">
-        <div class="header">
-          <div style="width:50px;height:50px;background:#F5A623;border-radius:10px;margin:0 auto 10px;line-height:50px;text-align:center;font-size:24px;font-weight:800;color:#0A1F44;">S</div>
-          <div style="font-size:18px;font-weight:800;letter-spacing:2px;">SIRADIFY POS</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px;">Nairobi, Kenya</div>
-        </div>
-        <div style="background:#fff;padding:16px;border:1px solid #eee;border-top:none;">
-          <hr class="divider">
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#666;">Order No.</span><span style="font-size:12px;font-weight:600;">#${order.id}</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#666;">Payment</span><span style="font-size:12px;font-weight:600;color:#F5A623;">${order.payment_method === 'mpesa' ? 'M-Pesa' : 'Cash'}</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#666;">Status</span><span style="font-size:12px;font-weight:600;color:${order.payment_status === 'paid' ? '#10B981' : '#F59E0B'}">${order.payment_status === 'paid' ? '✓ Paid' : '⏳ Pending'}</span></div>
-          ${order.customer_phone ? `<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#666;">Customer</span><span style="font-size:12px;font-weight:600;">${order.customer_phone}</span></div>` : ''}
-          <hr class="divider">
-          <table><thead><tr><th style="text-align:left;">Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Amount</th></tr></thead><tbody>${itemsHTML}</tbody></table>
-          <hr class="divider">
-          <div class="grand"><span style="font-size:16px;font-weight:700;color:#0A1F44;">GRAND TOTAL</span><span style="font-size:20px;font-weight:800;color:#F5A623;">KES ${total.toLocaleString()}</span></div>
-          <div class="loyalty"><div style="font-size:11px;color:#92400E;font-weight:600;">LOYALTY POINTS EARNED</div><div style="font-size:20px;font-weight:800;color:#F5A623;">+${loyaltyPoints} pts</div></div>
-          <div class="footer"><div style="font-size:10px;color:#999;margin-bottom:4px;">Thank you for your purchase!</div><div style="font-size:11px;font-weight:700;color:#0A1F44;letter-spacing:2px;">FROM VISION TO REALITY</div></div>
-        </div>
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
+      <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Courier New',monospace;}
+      .receipt{width:360px;margin:0 auto;padding:20px;}
+      .header{background:#0A1F44;color:#fff;padding:20px;text-align:center;border-radius:8px 8px 0 0;}
+      .divider{border:none;border-top:2px solid #F5A623;margin:12px 0;}
+      table{width:100%;border-collapse:collapse;margin:10px 0;}
+      th{font-size:10px;color:#666;text-transform:uppercase;padding:6px 0;border-bottom:1px solid #eee;}
+      .grand{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:2px solid #F5A623;}
+      .loyalty{background:#FEF3C7;border-radius:8px;padding:10px;margin:12px 0;text-align:center;}
+      .footer{text-align:center;margin-top:16px;padding-top:12px;border-top:1px dashed #ddd;}
+      @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact;}}</style>
+      </head><body><div class="receipt">
+      <div class="header">
+        <div style="width:50px;height:50px;background:#F5A623;border-radius:10px;margin:0 auto 10px;line-height:50px;text-align:center;font-size:24px;font-weight:800;color:#0A1F44;">S</div>
+        <div style="font-size:18px;font-weight:800;letter-spacing:2px;">SIRADIFY POS</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px;">Nairobi, Kenya</div>
       </div>
+      <div style="background:#fff;padding:16px;border:1px solid #eee;border-top:none;">
+        <hr class="divider">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#666;">Order No.</span><span style="font-size:12px;font-weight:600;">#${order.id}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#666;">Payment</span><span style="font-size:12px;font-weight:600;color:#F5A623;">${order.payment_method === 'mpesa' ? 'M-Pesa' : 'Cash'}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#666;">Status</span><span style="font-size:12px;font-weight:600;color:${order.payment_status === 'paid' ? '#10B981' : '#F59E0B'}">${order.payment_status === 'paid' ? '✓ Paid' : '⏳ Pending'}</span></div>
+        ${order.customer_phone ? `<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#666;">Customer</span><span style="font-size:12px;font-weight:600;">${order.customer_phone}</span></div>` : ''}
+        <hr class="divider">
+        <table><thead><tr><th style="text-align:left;">Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Amount</th></tr></thead><tbody>${itemsHTML}</tbody></table>
+        <hr class="divider">
+        <div class="grand"><span style="font-size:16px;font-weight:700;color:#0A1F44;">GRAND TOTAL</span><span style="font-size:20px;font-weight:800;color:#F5A623;">KES ${total.toLocaleString()}</span></div>
+        <div class="loyalty"><div style="font-size:11px;color:#92400E;font-weight:600;">LOYALTY POINTS EARNED</div><div style="font-size:20px;font-weight:800;color:#F5A623;">+${loyaltyPoints} pts</div></div>
+        <div class="footer"><div style="font-size:10px;color:#999;margin-bottom:4px;">Thank you for your purchase!</div><div style="font-size:11px;font-weight:700;color:#0A1F44;letter-spacing:2px;">FROM VISION TO REALITY</div></div>
+      </div></div>
       <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}</script>
-      </body></html>
-    `)
+      </body></html>`)
     printWindow.document.close()
   }
 
@@ -254,91 +235,108 @@ export default function Dashboard() {
 
   const navItems = user?.role === 'cashier' ? cashierNavItems : adminNavItems
 
-  const POSPage = () => {
-    if (posReceipt) {
-      return (
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <button onClick={() => setPosReceipt(null)} style={{ background: '#F3F4F6', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#374151' }}>← New Order</button>
-            <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: 0 }}>Order #{posReceipt.order.id}</h2>
-            <button onClick={() => handlePrintReceipt(posReceipt.order, posReceipt.items)} style={{ marginLeft: 'auto', backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>🖨️ Print Receipt</button>
-          </div>
-          <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '13px', color: '#6B7280' }}>Payment</span>
-              <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>{posReceipt.order.payment_method === 'mpesa' ? '📱 M-Pesa' : '💵 Cash'}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '13px', color: '#6B7280' }}>Status</span>
-              <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', backgroundColor: posReceipt.order.payment_status === 'paid' ? '#D1FAE5' : '#FEF3C7', color: posReceipt.order.payment_status === 'paid' ? '#065F46' : '#92400E' }}>
-                {posReceipt.order.payment_status === 'paid' ? '✓ Paid' : '⏳ Pending'}
-              </span>
-            </div>
-            {posReceipt.order.customer_phone && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '13px', color: '#6B7280' }}>Customer</span>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>{posReceipt.order.customer_phone}</span>
+  const ProductGrid = ({ cols }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '12px' }}>
+      {products.map(product => {
+        const qty = getCartQuantity(product.id)
+        return (
+          <div key={product.id} onClick={() => addToCart({ ...product, price: parseFloat(product.price), stock: parseInt(product.stock) })}
+            style={{ background: qty > 0 ? '#FFFBF0' : '#fff', borderRadius: '14px', padding: cols === 2 ? '14px' : '16px', textAlign: 'center', borderWidth: '1px', borderStyle: 'solid', borderColor: qty > 0 ? '#F5A623' : '#E5E7EB', cursor: 'pointer', position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            {qty > 0 && (
+              <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#F5A623', borderRadius: '10px', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#0A1F44' }}>{qty}</span>
               </div>
             )}
-          </div>
-          <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: '16px' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#0A1F44', margin: '0 0 14px' }}>Items</h4>
-            {posReceipt.items.map((item, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '10px', borderBottom: i < posReceipt.items.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', color: '#374151' }}>{item.name}</span>
-                  <span style={{ fontSize: '11px', color: '#6B7280', backgroundColor: '#F3F4F6', padding: '2px 6px', borderRadius: '4px' }}>x{item.quantity}</span>
-                </div>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: '#0A1F44' }}>KES {(parseFloat(item.price) * item.quantity).toLocaleString()}</span>
+            {product.image_url ? (
+              <img src={product.image_url} alt={product.name} style={{ width: cols === 2 ? '54px' : '60px', height: cols === 2 ? '54px' : '60px', borderRadius: '12px', objectFit: 'cover', marginBottom: '8px' }} />
+            ) : (
+              <div style={{ width: cols === 2 ? '54px' : '60px', height: cols === 2 ? '54px' : '60px', background: '#F4F6F9', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontSize: cols === 2 ? '26px' : '28px' }}>
+                {product.category === 'drinks' ? '🥤' : product.category === 'food' ? '🍽️' : product.category === 'electronics' ? '📱' : '📦'}
               </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '2px solid #E5E7EB' }}>
-              <span style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>Total</span>
-              <span style={{ fontSize: '20px', fontWeight: '800', color: '#0A1F44' }}>KES {parseFloat(posReceipt.order.total).toLocaleString()}</span>
-            </div>
+            )}
+            <p style={{ fontSize: cols === 2 ? '12px' : '13px', fontWeight: '600', color: '#1A1A2E', margin: '0 0 4px' }}>{product.name}</p>
+            <p style={{ fontSize: cols === 2 ? '13px' : '14px', fontWeight: '700', color: '#0A1F44', margin: '0 0 2px' }}>KES {parseFloat(product.price).toLocaleString()}</p>
+            <p style={{ fontSize: cols === 2 ? '10px' : '11px', color: '#6B7280', margin: 0 }}>{product.stock} left</p>
           </div>
-          <button onClick={() => handlePrintReceipt(posReceipt.order, posReceipt.items)} style={{ width: '100%', backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>
-            🖨️ Print Receipt
-          </button>
-        </div>
-      )
-    }
+        )
+      })}
+    </div>
+  )
 
+  const CartItems = () => (
+    <>
+      {cart.map(item => (
+        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', marginBottom: '12px', borderBottom: '1px solid #F3F4F6' }}>
+          <div style={{ flex: 1, marginRight: '8px' }}>
+            <p style={{ fontSize: '13px', fontWeight: '600', color: '#1A1A2E', margin: '0 0 2px' }}>{item.name}</p>
+            <p style={{ fontSize: '12px', color: '#F5A623', fontWeight: '700', margin: 0 }}>KES {(item.price * item.quantity).toLocaleString()}</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button onClick={() => removeFromCart(item.id)} style={{ width: '30px', height: '30px', background: '#F4F6F9', border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer', fontSize: '16px', fontWeight: '700', color: '#0A1F44' }}>-</button>
+            <span style={{ fontSize: '14px', fontWeight: '700', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
+            <button onClick={() => addToCart(item)} style={{ width: '30px', height: '30px', background: '#F4F6F9', border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer', fontSize: '16px', fontWeight: '700', color: '#0A1F44' }}>+</button>
+            <button onClick={() => removeItemCompletely(item.id)} style={{ width: '30px', height: '30px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#DC2626' }}>✕</button>
+          </div>
+        </div>
+      ))}
+    </>
+  )
+
+  const ReceiptView = ({ onNew }) => (
+    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        <button onClick={onNew} style={{ background: '#F3F4F6', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#374151' }}>← New Order</button>
+        <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: 0 }}>Order #{posReceipt.order.id}</h2>
+        <button onClick={() => handlePrintReceipt(posReceipt.order, posReceipt.items)} style={{ marginLeft: 'auto', backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>🖨️ Print Receipt</button>
+      </div>
+      <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <span style={{ fontSize: '13px', color: '#6B7280' }}>Payment</span>
+          <span style={{ fontSize: '13px', fontWeight: '600' }}>{posReceipt.order.payment_method === 'mpesa' ? '📱 M-Pesa' : '💵 Cash'}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <span style={{ fontSize: '13px', color: '#6B7280' }}>Status</span>
+          <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', backgroundColor: posReceipt.order.payment_status === 'paid' ? '#D1FAE5' : '#FEF3C7', color: posReceipt.order.payment_status === 'paid' ? '#065F46' : '#92400E' }}>
+            {posReceipt.order.payment_status === 'paid' ? '✓ Paid' : '⏳ Pending'}
+          </span>
+        </div>
+        {posReceipt.order.customer_phone && (
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '13px', color: '#6B7280' }}>Customer</span>
+            <span style={{ fontSize: '13px', fontWeight: '600' }}>{posReceipt.order.customer_phone}</span>
+          </div>
+        )}
+      </div>
+      <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#0A1F44', margin: '0 0 14px' }}>Items</h4>
+        {posReceipt.items.map((item, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '10px', borderBottom: i < posReceipt.items.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: '#374151' }}>{item.name}</span>
+              <span style={{ fontSize: '11px', color: '#6B7280', backgroundColor: '#F3F4F6', padding: '2px 6px', borderRadius: '4px' }}>x{item.quantity}</span>
+            </div>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: '#0A1F44' }}>KES {(parseFloat(item.price) * item.quantity).toLocaleString()}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '2px solid #E5E7EB' }}>
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>Total</span>
+          <span style={{ fontSize: '20px', fontWeight: '800', color: '#0A1F44' }}>KES {parseFloat(posReceipt.order.total).toLocaleString()}</span>
+        </div>
+      </div>
+      <button onClick={() => handlePrintReceipt(posReceipt.order, posReceipt.items)} style={{ width: '100%', backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>
+        🖨️ Print Receipt
+      </button>
+    </div>
+  )
+
+  const POSPage = () => {
+    if (posReceipt) return <ReceiptView onNew={() => setPosReceipt(null)} />
     return (
       <div style={{ display: 'flex', gap: '24px', height: 'calc(100vh - 120px)' }}>
-        {showMpesaModal && (
-          <MpesaModal
-            total={getTotal()}
-            onClose={() => setShowMpesaModal(false)}
-            onConfirm={processMpesaPayment}
-          />
-        )}
+        {showMpesaModal && <MpesaModal total={getTotal()} onClose={() => setShowMpesaModal(false)} onConfirm={processMpesaPayment} />}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 16px' }}>Products</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
-            {products.map(product => {
-              const qty = getCartQuantity(product.id)
-              return (
-                <div key={product.id} onClick={() => addToCart({ ...product, price: parseFloat(product.price), stock: parseInt(product.stock) })} style={{ background: qty > 0 ? '#FFFBF0' : '#fff', borderRadius: '14px', padding: '16px', textAlign: 'center', borderWidth: '1px', borderStyle: 'solid', borderColor: qty > 0 ? '#F5A623' : '#E5E7EB', cursor: 'pointer', position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                  {qty > 0 && (
-                    <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#F5A623', borderRadius: '10px', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#0A1F44' }}>{qty}</span>
-                    </div>
-                  )}
-                  {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover', marginBottom: '8px' }} />
-                  ) : (
-                    <div style={{ width: '60px', height: '60px', background: '#F4F6F9', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontSize: '28px' }}>
-                      {product.category === 'drinks' ? '🥤' : product.category === 'food' ? '🍽️' : product.category === 'electronics' ? '📱' : '📦'}
-                    </div>
-                  )}
-                  <p style={{ fontSize: '13px', fontWeight: '600', color: '#1A1A2E', margin: '0 0 4px' }}>{product.name}</p>
-                  <p style={{ fontSize: '14px', fontWeight: '700', color: '#0A1F44', margin: '0 0 2px' }}>KES {parseFloat(product.price).toLocaleString()}</p>
-                  <p style={{ fontSize: '11px', color: '#6B7280', margin: 0 }}>{product.stock} left</p>
-                </div>
-              )
-            })}
-          </div>
+          <ProductGrid cols={3} />
         </div>
         <div style={{ width: '320px', background: '#fff', borderRadius: '14px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 16px' }}>Cart {cart.length > 0 ? `(${getTotalItems()})` : ''}</h2>
@@ -349,22 +347,7 @@ export default function Dashboard() {
               <p style={{ color: '#9CA3AF', fontSize: '12px', margin: '4px 0 0' }}>Click a product to add</p>
             </div>
           ) : (
-            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '16px' }}>
-              {cart.map(item => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', marginBottom: '12px', borderBottom: '1px solid #F3F4F6' }}>
-                  <div style={{ flex: 1, marginRight: '8px' }}>
-                    <p style={{ fontSize: '13px', fontWeight: '600', color: '#1A1A2E', margin: '0 0 2px' }}>{item.name}</p>
-                    <p style={{ fontSize: '12px', color: '#F5A623', fontWeight: '700', margin: 0 }}>KES {(item.price * item.quantity).toLocaleString()}</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button onClick={() => removeFromCart(item.id)} style={{ width: '28px', height: '28px', background: '#F4F6F9', border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer', fontSize: '16px', fontWeight: '700', color: '#0A1F44' }}>-</button>
-                    <span style={{ fontSize: '14px', fontWeight: '700', color: '#1A1A2E', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
-                    <button onClick={() => addToCart(item)} style={{ width: '28px', height: '28px', background: '#F4F6F9', border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer', fontSize: '16px', fontWeight: '700', color: '#0A1F44' }}>+</button>
-                    <button onClick={() => removeItemCompletely(item.id)} style={{ width: '28px', height: '28px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#DC2626' }}>✕</button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '16px' }}><CartItems /></div>
           )}
           <div style={{ borderTop: '2px solid #E5E7EB', paddingTop: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -525,10 +508,8 @@ export default function Dashboard() {
     useEffect(() => { fetchStaff() }, [])
 
     const fetchStaff = async () => {
-      try {
-        const res = await api.get('/auth/staff')
-        setStaff(res.data)
-      } catch (err) { console.error(err) }
+      try { const res = await api.get('/auth/staff'); setStaff(res.data) }
+      catch (err) { console.error(err) }
     }
 
     const handleAddStaff = async () => {
@@ -719,13 +700,7 @@ export default function Dashboard() {
     if (mobileView === 'cart') {
       return (
         <div>
-          {showMpesaModal && (
-            <MpesaModal
-              total={getTotal()}
-              onClose={() => setShowMpesaModal(false)}
-              onConfirm={processMpesaPayment}
-            />
-          )}
+          {showMpesaModal && <MpesaModal total={getTotal()} onClose={() => setShowMpesaModal(false)} onConfirm={processMpesaPayment} />}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: 0 }}>Cart ({getTotalItems()})</h2>
             <button onClick={() => setMobileView('products')} style={{ background: '#F3F4F6', border: 'none', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#374151' }}>← Products</button>
@@ -738,21 +713,8 @@ export default function Dashboard() {
           ) : (
             <>
               <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                {cart.map(item => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', marginBottom: '12px', borderBottom: '1px solid #F3F4F6' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: '13px', fontWeight: '600', color: '#1A1A2E', margin: '0 0 2px' }}>{item.name}</p>
-                      <p style={{ fontSize: '12px', color: '#F5A623', fontWeight: '700', margin: 0 }}>KES {(item.price * item.quantity).toLocaleString()}</p>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <button onClick={() => removeFromCart(item.id)} style={{ width: '30px', height: '30px', background: '#F4F6F9', border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer', fontSize: '16px', fontWeight: '700', color: '#0A1F44' }}>-</button>
-                      <span style={{ fontSize: '14px', fontWeight: '700', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
-                      <button onClick={() => addToCart(item)} style={{ width: '30px', height: '30px', background: '#F4F6F9', border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer', fontSize: '16px', fontWeight: '700', color: '#0A1F44' }}>+</button>
-                      <button onClick={() => removeItemCompletely(item.id)} style={{ width: '30px', height: '30px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#DC2626' }}>✕</button>
-                    </div>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <CartItems />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '2px solid #E5E7EB', marginTop: '4px' }}>
                   <span style={{ fontSize: '16px', fontWeight: '600' }}>Total</span>
                   <span style={{ fontSize: '22px', fontWeight: '800', color: '#0A1F44' }}>KES {getTotal().toLocaleString()}</span>
                 </div>
@@ -779,30 +741,7 @@ export default function Dashboard() {
             </button>
           )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          {products.map(product => {
-            const qty = getCartQuantity(product.id)
-            return (
-              <div key={product.id} onClick={() => addToCart({ ...product, price: parseFloat(product.price), stock: parseInt(product.stock) })} style={{ background: qty > 0 ? '#FFFBF0' : '#fff', borderRadius: '14px', padding: '14px', textAlign: 'center', borderWidth: '1px', borderStyle: 'solid', borderColor: qty > 0 ? '#F5A623' : '#E5E7EB', cursor: 'pointer', position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                {qty > 0 && (
-                  <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#F5A623', borderRadius: '10px', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#0A1F44' }}>{qty}</span>
-                  </div>
-                )}
-                {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} style={{ width: '54px', height: '54px', borderRadius: '12px', objectFit: 'cover', marginBottom: '8px' }} />
-                ) : (
-                  <div style={{ width: '54px', height: '54px', background: '#F4F6F9', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontSize: '26px' }}>
-                    {product.category === 'drinks' ? '🥤' : product.category === 'food' ? '🍽️' : product.category === 'electronics' ? '📱' : '📦'}
-                  </div>
-                )}
-                <p style={{ fontSize: '12px', fontWeight: '600', color: '#1A1A2E', margin: '0 0 4px' }}>{product.name}</p>
-                <p style={{ fontSize: '13px', fontWeight: '700', color: '#0A1F44', margin: '0 0 2px' }}>KES {parseFloat(product.price).toLocaleString()}</p>
-                <p style={{ fontSize: '10px', color: '#6B7280', margin: 0 }}>{product.stock} left</p>
-              </div>
-            )
-          })}
-        </div>
+        <ProductGrid cols={2} />
       </div>
     )
   }
