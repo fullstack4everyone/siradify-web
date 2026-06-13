@@ -32,10 +32,10 @@ export default function Dashboard() {
   const [products, setProducts] = useState([])
   const [activePage, setActivePage] = useState('dashboard')
   const [salesData, setSalesData] = useState([])
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    const handleResize = () => setIsMobile(window.innerWidth < 1024)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -81,6 +81,8 @@ export default function Dashboard() {
     return orderDate.toDateString() === today.toDateString()
   })
   const todayRevenue = todayOrders.reduce((sum, o) => sum + parseFloat(o.total), 0)
+  const lowStockProducts = products.filter(p => parseInt(p.stock) <= 10)
+  const pendingCount = orders.filter(o => o.payment_status === 'pending').length
 
   const handleLogout = () => {
     logout()
@@ -95,6 +97,39 @@ export default function Dashboard() {
     { id: 'reports', label: 'Reports', icon: '📈' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ]
+
+  const LowStockAlert = () => {
+    if (lowStockProducts.length === 0) return null
+    return (
+      <div style={{ background: '#FEF3C7', borderRadius: '12px', padding: '16px', marginBottom: '20px', borderLeft: '4px solid #F59E0B' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <span style={{ fontSize: '18px' }}>⚠️</span>
+          <h3 style={{ color: '#92400E', fontSize: '14px', fontWeight: '700', margin: 0 }}>
+            {lowStockProducts.length} product{lowStockProducts.length > 1 ? 's' : ''} running low on stock
+          </h3>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {lowStockProducts.map(product => (
+            <div key={product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.6)', borderRadius: '8px', padding: '10px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {product.image_url ? (
+                  <img src={product.image_url} alt={product.name} style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: '20px' }}>
+                    {product.category === 'drinks' ? '🥤' : product.category === 'food' ? '🍽️' : product.category === 'electronics' ? '📱' : '📦'}
+                  </span>
+                )}
+                <span style={{ fontSize: '13px', fontWeight: '600', color: '#92400E' }}>{product.name}</span>
+              </div>
+              <span style={{ background: product.stock === 0 ? '#FEE2E2' : '#FEF3C7', color: product.stock === 0 ? '#DC2626' : '#92400E', padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>
+                {product.stock === 0 ? 'Out of stock' : `${product.stock} left`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   const Customers = () => {
     const customerMap = {}
@@ -271,7 +306,6 @@ export default function Dashboard() {
           <h1 style={{ color: '#0A1F44', fontSize: '20px', fontWeight: '700', margin: '0 0 4px' }}>Settings</h1>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>Manage your business settings</p>
         </div>
-
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{ flex: 1, minWidth: '280px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
@@ -292,7 +326,6 @@ export default function Dashboard() {
                 {saved ? '✓ Saved' : 'Save Changes'}
               </button>
             </div>
-
             <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <h3 style={{ color: '#0A1F44', fontSize: '15px', fontWeight: '600', margin: '0 0 14px' }}>Account</h3>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
@@ -311,7 +344,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
           <div style={{ flex: 1, minWidth: '280px' }}>
             <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -320,7 +352,6 @@ export default function Dashboard() {
                   {showAddStaff ? 'Cancel' : '+ Add Staff'}
                 </button>
               </div>
-
               {showAddStaff && (
                 <div style={{ backgroundColor: '#F9FAFB', borderRadius: '10px', padding: '14px', marginBottom: '16px', border: '1px solid #E5E7EB' }}>
                   {addError && (
@@ -338,7 +369,6 @@ export default function Dashboard() {
                   </button>
                 </div>
               )}
-
               {staff.length === 0 ? (
                 <p style={{ color: '#6B7280', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>No staff yet.</p>
               ) : (
@@ -363,23 +393,6 @@ export default function Dashboard() {
     )
   }
 
-  const thStyle = {
-    padding: '10px 12px',
-    textAlign: 'left',
-    fontSize: '11px',
-    fontWeight: '600',
-    color: '#6B7280',
-    letterSpacing: '0.05em',
-    textTransform: 'uppercase',
-    borderBottom: '1px solid #E5E7EB',
-  }
-
-  const tdStyle = {
-    padding: '12px 12px',
-    fontSize: '13px',
-    color: '#374151',
-  }
-
   const MobileHeader = () => (
     <div style={{
       background: '#0A1F44',
@@ -401,6 +414,12 @@ export default function Dashboard() {
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {lowStockProducts.length > 0 && (
+          <div style={{ background: '#EF4444', borderRadius: '20px', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '10px' }}>⚠️</span>
+            <span style={{ color: '#fff', fontSize: '10px', fontWeight: '700' }}>{lowStockProducts.length} low</span>
+          </div>
+        )}
         <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', margin: 0 }}>{user?.name}</p>
         <button onClick={handleLogout} style={{ background: 'transparent', border: '1px solid rgba(245,166,35,0.5)', color: '#F5A623', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>
           Logout
@@ -435,9 +454,15 @@ export default function Dashboard() {
             alignItems: 'center',
             gap: '3px',
             borderTop: activePage === item.id ? '2px solid #F5A623' : '2px solid transparent',
+            position: 'relative',
           }}
         >
           <span style={{ fontSize: '18px' }}>{item.icon}</span>
+          {item.id === 'products' && lowStockProducts.length > 0 && (
+            <span style={{ position: 'absolute', top: '6px', right: '8px', background: '#EF4444', color: '#fff', fontSize: '8px', fontWeight: '700', borderRadius: '10px', padding: '1px 5px' }}>
+              {lowStockProducts.length}
+            </span>
+          )}
           <span style={{ color: activePage === item.id ? '#F5A623' : 'rgba(255,255,255,0.5)', fontSize: '9px', fontWeight: activePage === item.id ? '700' : '400' }}>
             {item.label}
           </span>
@@ -450,9 +475,7 @@ export default function Dashboard() {
     return (
       <div style={{ minHeight: '100vh', background: '#F4F6F9', fontFamily: 'Inter, sans-serif' }}>
         <MobileHeader />
-
         <div style={{ padding: '16px', paddingBottom: '80px' }}>
-
           {activePage === 'dashboard' && (
             <>
               <div style={{ marginBottom: '20px' }}>
@@ -462,11 +485,13 @@ export default function Dashboard() {
                 <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>Business overview for today.</p>
               </div>
 
+              <LowStockAlert />
+
               <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 <StatCard title="Total Revenue" value={`KES ${totalRevenue.toLocaleString()}`} sub="All time" color="#F5A623" />
                 <StatCard title="Today" value={`KES ${todayRevenue.toLocaleString()}`} sub="Today only" color="#10B981" />
                 <StatCard title="Products" value={products.length} sub="In stock" color="#0A1F44" />
-                <StatCard title="Pending" value={orders.filter(o => o.payment_status === 'pending').length} sub="Needs attention" color="#EF4444" />
+                <StatCard title="Pending" value={pendingCount} sub="Needs attention" color="#EF4444" />
               </div>
 
               <div style={{ background: '#ffffff', borderRadius: '12px', padding: '16px', marginBottom: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
@@ -513,14 +538,12 @@ export default function Dashboard() {
               </div>
             </>
           )}
-
           {activePage === 'products' && <Products />}
           {activePage === 'orders' && <Orders />}
           {activePage === 'customers' && <Customers />}
           {activePage === 'reports' && <Reports />}
           {activePage === 'settings' && <Settings />}
         </div>
-
         <BottomNav />
       </div>
     )
@@ -562,13 +585,19 @@ export default function Dashboard() {
                 cursor: 'pointer',
                 background: activePage === item.id ? 'rgba(245,166,35,0.15)' : 'transparent',
                 borderRight: activePage === item.id ? '3px solid #F5A623' : '3px solid transparent',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                position: 'relative',
               }}
             >
               <span style={{ fontSize: '18px' }}>{item.icon}</span>
               <span style={{ color: activePage === item.id ? '#F5A623' : 'rgba(255,255,255,0.7)', fontSize: '14px', fontWeight: activePage === item.id ? '600' : '400' }}>
                 {item.label}
               </span>
+              {item.id === 'products' && lowStockProducts.length > 0 && (
+                <span style={{ marginLeft: 'auto', background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: '700', borderRadius: '10px', padding: '2px 7px' }}>
+                  {lowStockProducts.length}
+                </span>
+              )}
             </div>
           ))}
         </nav>
@@ -592,11 +621,14 @@ export default function Dashboard() {
               <p style={{ color: '#6B7280', fontSize: '14px', margin: 0 }}>Here is your business overview for today.</p>
             </div>
 
+            <LowStockAlert />
+
             <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
               <StatCard title="Total Revenue" value={`KES ${totalRevenue.toLocaleString()}`} sub="All time" color="#F5A623" />
               <StatCard title="Today Revenue" value={`KES ${todayRevenue.toLocaleString()}`} sub="Today only" color="#10B981" />
               <StatCard title="Products" value={products.length} sub="In stock" color="#0A1F44" />
-              <StatCard title="Pending Payments" value={orders.filter(o => o.payment_status === 'pending').length} sub="Needs attention" color="#EF4444" />
+              <StatCard title="Pending Payments" value={pendingCount} sub="Needs attention" color="#EF4444" />
+              <StatCard title="Low Stock" value={lowStockProducts.length} sub="Need restocking" color="#F59E0B" />
             </div>
 
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
@@ -653,7 +685,6 @@ export default function Dashboard() {
             </div>
           </>
         )}
-
         {activePage === 'products' && <Products />}
         {activePage === 'orders' && <Orders />}
         {activePage === 'customers' && <Customers />}
