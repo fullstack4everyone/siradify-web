@@ -11,10 +11,10 @@ export default function Products() {
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    const handleResize = () => setIsMobile(window.innerWidth < 1024)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -200,12 +200,8 @@ export default function Products() {
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-                <button onClick={() => handleEdit(product)} style={{ background: '#EFF6FF', color: '#1D4ED8', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(product.id)} style={{ background: '#FEE2E2', color: '#DC2626', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
-                  Delete
-                </button>
+                <button onClick={() => handleEdit(product)} style={{ background: '#EFF6FF', color: '#1D4ED8', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Edit</button>
+                <button onClick={() => handleDelete(product.id)} style={{ background: '#FEE2E2', color: '#DC2626', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Delete</button>
               </div>
             </div>
           ))}
