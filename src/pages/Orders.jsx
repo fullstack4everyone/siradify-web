@@ -7,10 +7,10 @@ export default function Orders() {
   const [selected, setSelected] = useState(null)
   const [updating, setUpdating] = useState(null)
   const [filter, setFilter] = useState('all')
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    const handleResize = () => setIsMobile(window.innerWidth < 1024)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -69,6 +69,157 @@ export default function Orders() {
     })
   }
 
+  const handlePrint = (order, items) => {
+    const printWindow = window.open('', '_blank', 'width=400,height=600')
+    const total = parseFloat(order.total)
+    const tax = 0
+    const discount = 0
+    const loyaltyPoints = Math.floor(total / 10)
+
+    const itemsHTML = items.map(item => `
+      <tr>
+        <td style="padding: 6px 0; font-size: 13px; color: #333;">${item.name}</td>
+        <td style="padding: 6px 0; font-size: 13px; color: #333; text-align: center;">${item.quantity}</td>
+        <td style="padding: 6px 0; font-size: 13px; color: #333; text-align: right;">${parseFloat(item.price).toLocaleString()}</td>
+        <td style="padding: 6px 0; font-size: 13px; font-weight: 700; color: #0A1F44; text-align: right;">${(parseFloat(item.price) * item.quantity).toLocaleString()}</td>
+      </tr>
+    `).join('')
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt - Order #${order.id}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Courier New', monospace; background: #fff; }
+          .receipt { width: 360px; margin: 0 auto; padding: 20px; }
+          .header { background: #0A1F44; color: #fff; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .logo { width: 50px; height: 50px; background: #F5A623; border-radius: 10px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #0A1F44; line-height: 50px; }
+          .brand { font-size: 18px; font-weight: 800; letter-spacing: 2px; margin-bottom: 4px; }
+          .tagline { font-size: 9px; color: #F5A623; letter-spacing: 2px; }
+          .divider { border: none; border-top: 2px solid #F5A623; margin: 12px 0; }
+          .info-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+          .info-label { font-size: 12px; color: #666; }
+          .info-value { font-size: 12px; font-weight: 600; color: #333; }
+          .payment-value { font-size: 12px; font-weight: 600; color: #F5A623; }
+          table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+          th { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; padding: 6px 0; border-bottom: 1px solid #eee; }
+          .totals { margin-top: 10px; }
+          .total-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+          .total-label { font-size: 12px; color: #666; }
+          .total-value { font-size: 12px; color: #333; }
+          .grand-total { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #F5A623; }
+          .grand-label { font-size: 16px; font-weight: 700; color: #0A1F44; }
+          .grand-value { font-size: 20px; font-weight: 800; color: #F5A623; }
+          .loyalty { background: #FEF3C7; border-radius: 8px; padding: 10px; margin: 12px 0; text-align: center; }
+          .loyalty-title { font-size: 11px; color: #92400E; font-weight: 600; margin-bottom: 2px; }
+          .loyalty-points { font-size: 20px; font-weight: 800; color: #F5A623; }
+          .footer { text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px dashed #ddd; }
+          .footer-text { font-size: 10px; color: #999; margin-bottom: 4px; }
+          .footer-brand { font-size: 11px; font-weight: 700; color: #0A1F44; letter-spacing: 2px; }
+          @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt">
+          <div class="header">
+            <div class="logo">S</div>
+            <div class="brand">SIRADIFY POS</div>
+            <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 4px;">Nairobi, Kenya</div>
+            <div style="font-size: 11px; color: rgba(255,255,255,0.7);">support@siradify.com</div>
+          </div>
+
+          <div style="background: #fff; padding: 16px; border: 1px solid #eee; border-top: none;">
+            <hr class="divider">
+            <div class="info-row">
+              <span class="info-label">Order No.</span>
+              <span class="info-value">#${order.id}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Date</span>
+              <span class="info-value">${formatDate(order.created_at)}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Payment</span>
+              <span class="payment-value">${order.payment_method === 'mpesa' ? 'M-Pesa' : 'Cash'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Status</span>
+              <span class="info-value" style="color: ${order.payment_status === 'paid' ? '#10B981' : '#F59E0B'}">
+                ${order.payment_status === 'paid' ? '✓ Paid' : '⏳ Pending'}
+              </span>
+            </div>
+            ${order.customer_phone ? `
+            <div class="info-row">
+              <span class="info-label">Customer</span>
+              <span class="info-value">${order.customer_phone}</span>
+            </div>` : ''}
+            <hr class="divider">
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align: left;">Item</th>
+                  <th style="text-align: center;">Qty</th>
+                  <th style="text-align: right;">Price</th>
+                  <th style="text-align: right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHTML}
+              </tbody>
+            </table>
+
+            <hr class="divider">
+
+            <div class="totals">
+              <div class="total-row">
+                <span class="total-label">Subtotal</span>
+                <span class="total-value">KES ${total.toLocaleString()}</span>
+              </div>
+              <div class="total-row">
+                <span class="total-label">Discount</span>
+                <span class="total-value">KES ${discount}</span>
+              </div>
+              <div class="total-row">
+                <span class="total-label">Tax</span>
+                <span class="total-value">KES ${tax}</span>
+              </div>
+            </div>
+
+            <div class="grand-total">
+              <span class="grand-label">GRAND TOTAL</span>
+              <span class="grand-value">KES ${total.toLocaleString()}</span>
+            </div>
+
+            <div class="loyalty">
+              <div class="loyalty-title">LOYALTY POINTS EARNED</div>
+              <div class="loyalty-points">+${loyaltyPoints} pts</div>
+              <div style="font-size: 10px; color: #92400E; margin-top: 2px;">1 point per KES 10 spent</div>
+            </div>
+
+            <div class="footer">
+              <div class="footer-text">Thank you for your purchase!</div>
+              <div class="footer-text">Please come again</div>
+              <div class="footer-brand">FROM VISION TO REALITY</div>
+            </div>
+          </div>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print()
+            window.onafterprint = function() { window.close() }
+          }
+        </script>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
   const filteredOrders = orders.filter(o => {
     if (filter === 'all') return true
     if (filter === 'pending') return o.payment_status === 'pending'
@@ -94,6 +245,12 @@ export default function Orders() {
           <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: 0 }}>
             Order #{selected.order.id}
           </h2>
+          <button
+            onClick={() => handlePrint(selected.order, selected.items)}
+            style={{ marginLeft: 'auto', backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
+          >
+            🖨️ Print Receipt
+          </button>
         </div>
 
         <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: '16px' }}>
@@ -146,15 +303,23 @@ export default function Orders() {
           </div>
         </div>
 
-        {selected.order.payment_status === 'pending' && (
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {selected.order.payment_status === 'pending' && (
+            <button
+              style={{ flex: 1, backgroundColor: '#10B981', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}
+              onClick={() => markAsPaid(selected.order.id)}
+              disabled={updating === selected.order.id}
+            >
+              {updating === selected.order.id ? 'Updating...' : '✓ Mark as Paid'}
+            </button>
+          )}
           <button
-            style={{ width: '100%', backgroundColor: '#10B981', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}
-            onClick={() => markAsPaid(selected.order.id)}
-            disabled={updating === selected.order.id}
+            style={{ flex: 1, backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}
+            onClick={() => handlePrint(selected.order, selected.items)}
           >
-            {updating === selected.order.id ? 'Updating...' : '✓ Mark as Paid'}
+            🖨️ Print Receipt
           </button>
-        )}
+        </div>
       </div>
     )
   }
@@ -357,13 +522,19 @@ export default function Orders() {
                 </div>
               ))}
               <div style={{ height: '1px', backgroundColor: '#E5E7EB', margin: '12px 0' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <span style={{ fontSize: '15px', fontWeight: '600', color: '#374151' }}>Total</span>
                 <span style={{ fontSize: '18px', fontWeight: '800', color: '#0A1F44' }}>KES {parseFloat(selected.order.total).toLocaleString()}</span>
               </div>
+              <button
+                style={{ width: '100%', backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', marginBottom: '8px' }}
+                onClick={() => handlePrint(selected.order, selected.items)}
+              >
+                🖨️ Print Receipt
+              </button>
               {selected.order.payment_status === 'pending' && (
                 <button
-                  style={{ width: '100%', backgroundColor: '#10B981', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginTop: '16px' }}
+                  style={{ width: '100%', backgroundColor: '#10B981', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}
                   onClick={() => markAsPaid(selected.order.id)}
                   disabled={updating === selected.order.id}
                 >
