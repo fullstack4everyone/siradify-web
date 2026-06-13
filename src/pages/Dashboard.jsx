@@ -1,6 +1,6 @@
 import Products from './Products'
 import Orders from './Orders'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
@@ -25,6 +25,37 @@ const StatCard = ({ title, value, sub, color }) => (
   </div>
 )
 
+const MpesaModal = ({ total, onClose, onConfirm }) => {
+  const [phone, setPhone] = useState('')
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '380px' }}>
+        <h3 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 6px' }}>M-Pesa Payment</h3>
+        <p style={{ color: '#F5A623', fontSize: '16px', fontWeight: '700', margin: '0 0 20px' }}>Total: KES {total.toLocaleString()}</p>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Customer Phone Number</label>
+        <input
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          placeholder="e.g. 0712345678"
+          type="tel"
+          inputMode="numeric"
+          autoFocus
+          style={{ width: '100%', padding: '14px', borderRadius: '8px', border: '2px solid #0A1F44', fontSize: '18px', marginBottom: '16px', boxSizing: 'border-box', letterSpacing: '2px' }}
+        />
+        <button
+          onClick={() => { if (phone) onConfirm(phone) }}
+          style={{ width: '100%', backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}
+        >
+          Send M-Pesa Request
+        </button>
+        <button onClick={onClose} style={{ width: '100%', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -37,7 +68,6 @@ export default function Dashboard() {
   const [cart, setCart] = useState([])
   const [placing, setPlacing] = useState(false)
   const [showMpesaModal, setShowMpesaModal] = useState(false)
-  const [mpesaPhone, setMpesaPhone] = useState('')
   const [posReceipt, setPosReceipt] = useState(null)
 
   useEffect(() => {
@@ -118,20 +148,12 @@ export default function Dashboard() {
   }
 
   const getTotal = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-
-  const getCartQuantity = (productId) => {
-    const item = cart.find(i => i.id === productId)
-    return item ? item.quantity : 0
-  }
-
+  const getCartQuantity = (productId) => { const item = cart.find(i => i.id === productId); return item ? item.quantity : 0 }
   const getTotalItems = () => cart.reduce((sum, item) => sum + item.quantity, 0)
 
   const placeOrder = async (paymentMethod) => {
     if (cart.length === 0) return
-    if (paymentMethod === 'mpesa') {
-      setShowMpesaModal(true)
-      return
-    }
+    if (paymentMethod === 'mpesa') { setShowMpesaModal(true); return }
     setPlacing(true)
     try {
       const items = cart.map(item => ({ product_id: item.id, quantity: item.quantity, price: item.price }))
@@ -146,17 +168,15 @@ export default function Dashboard() {
     }
   }
 
-  const processMpesaPayment = async () => {
-    if (!mpesaPhone) return
+  const processMpesaPayment = async (phone) => {
     setShowMpesaModal(false)
     setPlacing(true)
     try {
       const items = cart.map(item => ({ product_id: item.id, quantity: item.quantity, price: item.price }))
-      const orderRes = await api.post('/orders', { items, payment_method: 'mpesa', customer_phone: mpesaPhone })
+      const orderRes = await api.post('/orders', { items, payment_method: 'mpesa', customer_phone: phone })
       const orderId = orderRes.data.order.id
-      await api.post('/mpesa/stkpush', { phone: mpesaPhone, amount: getTotal(), order_id: orderId })
+      await api.post('/mpesa/stkpush', { phone, amount: getTotal(), order_id: orderId })
       setCart([])
-      setMpesaPhone('')
       setPosReceipt({ order: { ...orderRes.data.order, payment_status: 'pending' }, items: orderRes.data.items })
       fetchData()
     } catch (err) {
@@ -234,44 +254,14 @@ export default function Dashboard() {
 
   const navItems = user?.role === 'cashier' ? cashierNavItems : adminNavItems
 
-  const MpesaModal = ({ onClose }) => (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-      <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '380px' }}>
-        <h3 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 6px' }}>M-Pesa Payment</h3>
-        <p style={{ color: '#F5A623', fontSize: '16px', fontWeight: '700', margin: '0 0 20px' }}>Total: KES {getTotal().toLocaleString()}</p>
-        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Customer Phone Number</label>
-        <input
-          value={mpesaPhone}
-          onChange={e => setMpesaPhone(e.target.value)}
-          placeholder="e.g. 0712345678"
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel"
-          autoFocus
-          style={{ width: '100%', padding: '14px', borderRadius: '8px', border: '2px solid #0A1F44', fontSize: '18px', marginBottom: '16px', boxSizing: 'border-box', letterSpacing: '2px' }}
-        />
-        <button onClick={processMpesaPayment} style={{ width: '100%', backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>
-          Send M-Pesa Request
-        </button>
-        <button onClick={onClose} style={{ width: '100%', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  )
-
   const POSPage = () => {
     if (posReceipt) {
       return (
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <button onClick={() => setPosReceipt(null)} style={{ background: '#F3F4F6', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
-              ← New Order
-            </button>
+            <button onClick={() => setPosReceipt(null)} style={{ background: '#F3F4F6', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#374151' }}>← New Order</button>
             <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: 0 }}>Order #{posReceipt.order.id}</h2>
-            <button onClick={() => handlePrintReceipt(posReceipt.order, posReceipt.items)} style={{ marginLeft: 'auto', backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
-              🖨️ Print Receipt
-            </button>
+            <button onClick={() => handlePrintReceipt(posReceipt.order, posReceipt.items)} style={{ marginLeft: 'auto', backgroundColor: '#F5A623', color: '#0A1F44', border: 'none', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>🖨️ Print Receipt</button>
           </div>
           <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -317,9 +307,12 @@ export default function Dashboard() {
     return (
       <div style={{ display: 'flex', gap: '24px', height: 'calc(100vh - 120px)' }}>
         {showMpesaModal && (
-          <MpesaModal onClose={() => { setShowMpesaModal(false); setMpesaPhone('') }} />
+          <MpesaModal
+            total={getTotal()}
+            onClose={() => setShowMpesaModal(false)}
+            onConfirm={processMpesaPayment}
+          />
         )}
-
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 16px' }}>Products</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
@@ -347,11 +340,8 @@ export default function Dashboard() {
             })}
           </div>
         </div>
-
         <div style={{ width: '320px', background: '#fff', borderRadius: '14px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-          <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 16px' }}>
-            Cart {cart.length > 0 ? `(${getTotalItems()})` : ''}
-          </h2>
+          <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 16px' }}>Cart {cart.length > 0 ? `(${getTotalItems()})` : ''}</h2>
           {cart.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: '48px', marginBottom: '12px' }}>🛒</span>
@@ -410,9 +400,7 @@ export default function Dashboard() {
                 {product.image_url ? (
                   <img src={product.image_url} alt={product.name} style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ fontSize: '20px' }}>
-                    {product.category === 'drinks' ? '🥤' : product.category === 'food' ? '🍽️' : product.category === 'electronics' ? '📱' : '📦'}
-                  </span>
+                  <span style={{ fontSize: '20px' }}>{product.category === 'drinks' ? '🥤' : product.category === 'food' ? '🍽️' : product.category === 'electronics' ? '📱' : '📦'}</span>
                 )}
                 <span style={{ fontSize: '13px', fontWeight: '600', color: '#92400E' }}>{product.name}</span>
               </div>
@@ -732,7 +720,11 @@ export default function Dashboard() {
       return (
         <div>
           {showMpesaModal && (
-            <MpesaModal onClose={() => { setShowMpesaModal(false); setMpesaPhone('') }} />
+            <MpesaModal
+              total={getTotal()}
+              onClose={() => setShowMpesaModal(false)}
+              onConfirm={processMpesaPayment}
+            />
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: 0 }}>Cart ({getTotalItems()})</h2>
