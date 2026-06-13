@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 export default function Products() {
+  const { user } = useAuth()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -106,16 +108,18 @@ export default function Products() {
           <h1 style={{ color: '#0A1F44', fontSize: isMobile ? '18px' : '22px', fontWeight: '700', margin: '0 0 2px' }}>Products</h1>
           <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>{products.length} products in inventory</p>
         </div>
-        <button
-          onClick={() => {
-            setShowForm(!showForm)
-            setEditProduct(null)
-            setForm({ name: '', price: '', stock: '', category: '', image_url: '' })
-          }}
-          style={{ background: '#F5A623', color: '#0A1F44', border: 'none', padding: '9px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-        >
-          {showForm ? 'Cancel' : '+ Add'}
-        </button>
+        {user?.role === 'admin' && (
+          <button
+            onClick={() => {
+              setShowForm(!showForm)
+              setEditProduct(null)
+              setForm({ name: '', price: '', stock: '', category: '', image_url: '' })
+            }}
+            style={{ background: '#F5A623', color: '#0A1F44', border: 'none', padding: '9px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+          >
+            {showForm ? 'Cancel' : '+ Add'}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -125,7 +129,7 @@ export default function Products() {
         <div style={{ background: '#D1FAE5', color: '#065F46', padding: '12px 16px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' }}>{success}</div>
       )}
 
-      {showForm && (
+      {showForm && user?.role === 'admin' && (
         <div style={{ background: '#ffffff', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
           <h3 style={{ color: '#0A1F44', fontSize: '15px', fontWeight: '600', margin: '0 0 16px' }}>
             {editProduct ? 'Edit Product' : 'Add New Product'}
@@ -158,14 +162,12 @@ export default function Products() {
                 <input style={inputStyle} value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} placeholder="https://example.com/image.jpg" />
               </div>
             </div>
-
             {form.image_url && (
               <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <img src={form.image_url} alt="preview" style={{ width: '52px', height: '52px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #E5E7EB' }} onError={e => e.target.style.display = 'none'} />
                 <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>Image preview</p>
               </div>
             )}
-
             <button type="submit" style={{ background: '#0A1F44', color: '#ffffff', border: 'none', padding: '11px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
               {editProduct ? 'Update Product' : 'Save Product'}
             </button>
@@ -176,7 +178,7 @@ export default function Products() {
       {loading ? (
         <p style={{ color: '#6B7280', textAlign: 'center', padding: '20px 0' }}>Loading products...</p>
       ) : products.length === 0 ? (
-        <p style={{ color: '#6B7280', textAlign: 'center', padding: '20px 0' }}>No products yet. Add your first product.</p>
+        <p style={{ color: '#6B7280', textAlign: 'center', padding: '20px 0' }}>No products yet.</p>
       ) : isMobile ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {products.map(product => (
@@ -199,10 +201,12 @@ export default function Products() {
                   <span style={{ fontSize: '11px', color: '#6B7280', textTransform: 'capitalize' }}>{product.category}</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-                <button onClick={() => handleEdit(product)} style={{ background: '#EFF6FF', color: '#1D4ED8', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Edit</button>
-                <button onClick={() => handleDelete(product.id)} style={{ background: '#FEE2E2', color: '#DC2626', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Delete</button>
-              </div>
+              {user?.role === 'admin' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                  <button onClick={() => handleEdit(product)} style={{ background: '#EFF6FF', color: '#1D4ED8', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Edit</button>
+                  <button onClick={() => handleDelete(product.id)} style={{ background: '#FEE2E2', color: '#DC2626', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Delete</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -216,7 +220,7 @@ export default function Products() {
                 <th style={thStyle}>Price</th>
                 <th style={thStyle}>Stock</th>
                 <th style={thStyle}>Category</th>
-                <th style={thStyle}>Actions</th>
+                {user?.role === 'admin' && <th style={thStyle}>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -238,10 +242,12 @@ export default function Products() {
                     </span>
                   </td>
                   <td style={{ ...tdStyle, textTransform: 'capitalize' }}>{product.category}</td>
-                  <td style={tdStyle}>
-                    <button onClick={() => handleEdit(product)} style={{ background: '#EFF6FF', color: '#1D4ED8', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', marginRight: '8px' }}>Edit</button>
-                    <button onClick={() => handleDelete(product.id)} style={{ background: '#FEE2E2', color: '#DC2626', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>Delete</button>
-                  </td>
+                  {user?.role === 'admin' && (
+                    <td style={tdStyle}>
+                      <button onClick={() => handleEdit(product)} style={{ background: '#EFF6FF', color: '#1D4ED8', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', marginRight: '8px' }}>Edit</button>
+                      <button onClick={() => handleDelete(product.id)} style={{ background: '#FEE2E2', color: '#DC2626', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>Delete</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
