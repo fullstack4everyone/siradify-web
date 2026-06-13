@@ -34,7 +34,6 @@ export default function Dashboard() {
   const [salesData, setSalesData] = useState([])
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
 
-  // POS state
   const [cart, setCart] = useState([])
   const [placing, setPlacing] = useState(false)
   const [showMpesaModal, setShowMpesaModal] = useState(false)
@@ -96,7 +95,6 @@ export default function Dashboard() {
     navigate('/')
   }
 
-  // POS functions
   const addToCart = (product) => {
     const existing = cart.find(item => item.id === product.id)
     if (existing) {
@@ -236,6 +234,32 @@ export default function Dashboard() {
 
   const navItems = user?.role === 'cashier' ? cashierNavItems : adminNavItems
 
+  const MpesaModal = ({ onClose }) => (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '380px' }}>
+        <h3 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 6px' }}>M-Pesa Payment</h3>
+        <p style={{ color: '#F5A623', fontSize: '16px', fontWeight: '700', margin: '0 0 20px' }}>Total: KES {getTotal().toLocaleString()}</p>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Customer Phone Number</label>
+        <input
+          value={mpesaPhone}
+          onChange={e => setMpesaPhone(e.target.value)}
+          placeholder="e.g. 0712345678"
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          autoFocus
+          style={{ width: '100%', padding: '14px', borderRadius: '8px', border: '2px solid #0A1F44', fontSize: '18px', marginBottom: '16px', boxSizing: 'border-box', letterSpacing: '2px' }}
+        />
+        <button onClick={processMpesaPayment} style={{ width: '100%', backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>
+          Send M-Pesa Request
+        </button>
+        <button onClick={onClose} style={{ width: '100%', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+
   const POSPage = () => {
     if (posReceipt) {
       return (
@@ -293,38 +317,16 @@ export default function Dashboard() {
     return (
       <div style={{ display: 'flex', gap: '24px', height: 'calc(100vh - 120px)' }}>
         {showMpesaModal && (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', width: '380px', maxWidth: '90vw' }}>
-              <h3 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 6px' }}>M-Pesa Payment</h3>
-              <p style={{ color: '#F5A623', fontSize: '16px', fontWeight: '700', margin: '0 0 20px' }}>Total: KES {getTotal().toLocaleString()}</p>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Customer Phone Number</label>
-              <input
-                value={mpesaPhone}
-                onChange={e => setMpesaPhone(e.target.value)}
-                placeholder="e.g. 0712345678"
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '15px', marginBottom: '16px', boxSizing: 'border-box' }}
-              />
-              <button onClick={processMpesaPayment} style={{ width: '100%', backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>
-                Send M-Pesa Request
-              </button>
-              <button onClick={() => { setShowMpesaModal(false); setMpesaPhone('') }} style={{ width: '100%', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                Cancel
-              </button>
-            </div>
-          </div>
+          <MpesaModal onClose={() => { setShowMpesaModal(false); setMpesaPhone('') }} />
         )}
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 16px' }}>Products</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
             {products.map(product => {
               const qty = getCartQuantity(product.id)
               return (
-                <div
-                  key={product.id}
-                  onClick={() => addToCart({ ...product, price: parseFloat(product.price), stock: parseInt(product.stock) })}
-                  style={{ background: qty > 0 ? '#FFFBF0' : '#fff', borderRadius: '14px', padding: '16px', alignItems: 'center', borderWidth: '1px', borderStyle: 'solid', borderColor: qty > 0 ? '#F5A623' : '#E5E7EB', cursor: 'pointer', position: 'relative', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
-                >
+                <div key={product.id} onClick={() => addToCart({ ...product, price: parseFloat(product.price), stock: parseInt(product.stock) })} style={{ background: qty > 0 ? '#FFFBF0' : '#fff', borderRadius: '14px', padding: '16px', textAlign: 'center', borderWidth: '1px', borderStyle: 'solid', borderColor: qty > 0 ? '#F5A623' : '#E5E7EB', cursor: 'pointer', position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   {qty > 0 && (
                     <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#F5A623', borderRadius: '10px', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <span style={{ fontSize: '11px', fontWeight: '700', color: '#0A1F44' }}>{qty}</span>
@@ -350,7 +352,6 @@ export default function Dashboard() {
           <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 16px' }}>
             Cart {cart.length > 0 ? `(${getTotalItems()})` : ''}
           </h2>
-
           {cart.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: '48px', marginBottom: '12px' }}>🛒</span>
@@ -375,24 +376,15 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-
           <div style={{ borderTop: '2px solid #E5E7EB', paddingTop: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '16px', fontWeight: '600', color: '#374151' }}>Total</span>
               <span style={{ fontSize: '22px', fontWeight: '800', color: '#0A1F44' }}>KES {getTotal().toLocaleString()}</span>
             </div>
-            <button
-              onClick={() => placeOrder('cash')}
-              disabled={placing || cart.length === 0}
-              style={{ width: '100%', backgroundColor: cart.length === 0 ? '#E5E7EB' : '#F5A623', color: cart.length === 0 ? '#9CA3AF' : '#0A1F44', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: cart.length === 0 ? 'not-allowed' : 'pointer', marginBottom: '10px' }}
-            >
+            <button onClick={() => placeOrder('cash')} disabled={placing || cart.length === 0} style={{ width: '100%', backgroundColor: cart.length === 0 ? '#E5E7EB' : '#F5A623', color: cart.length === 0 ? '#9CA3AF' : '#0A1F44', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: cart.length === 0 ? 'not-allowed' : 'pointer', marginBottom: '10px' }}>
               {placing ? 'Processing...' : '💵 Cash Payment'}
             </button>
-            <button
-              onClick={() => placeOrder('mpesa')}
-              disabled={placing || cart.length === 0}
-              style={{ width: '100%', backgroundColor: cart.length === 0 ? '#E5E7EB' : '#0A1F44', color: cart.length === 0 ? '#9CA3AF' : '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}
-            >
+            <button onClick={() => placeOrder('mpesa')} disabled={placing || cart.length === 0} style={{ width: '100%', backgroundColor: cart.length === 0 ? '#E5E7EB' : '#0A1F44', color: cart.length === 0 ? '#9CA3AF' : '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: cart.length === 0 ? 'not-allowed' : 'pointer' }}>
               {placing ? 'Processing...' : '📱 M-Pesa Payment'}
             </button>
           </div>
@@ -683,20 +675,12 @@ export default function Dashboard() {
   const BottomNav = () => (
     <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0A1F44', display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)', zIndex: 100 }}>
       {navItems.map(item => (
-        <button
-          key={item.id}
-          onClick={() => setActivePage(item.id)}
-          style={{ flex: 1, background: 'transparent', border: 'none', padding: '10px 4px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', borderTop: activePage === item.id ? '2px solid #F5A623' : '2px solid transparent', position: 'relative' }}
-        >
+        <button key={item.id} onClick={() => setActivePage(item.id)} style={{ flex: 1, background: 'transparent', border: 'none', padding: '10px 4px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', borderTop: activePage === item.id ? '2px solid #F5A623' : '2px solid transparent', position: 'relative' }}>
           <span style={{ fontSize: '18px' }}>{item.icon}</span>
           {item.id === 'products' && lowStockProducts.length > 0 && user?.role === 'admin' && (
-            <span style={{ position: 'absolute', top: '6px', right: '8px', background: '#EF4444', color: '#fff', fontSize: '8px', fontWeight: '700', borderRadius: '10px', padding: '1px 5px' }}>
-              {lowStockProducts.length}
-            </span>
+            <span style={{ position: 'absolute', top: '6px', right: '8px', background: '#EF4444', color: '#fff', fontSize: '8px', fontWeight: '700', borderRadius: '10px', padding: '1px 5px' }}>{lowStockProducts.length}</span>
           )}
-          <span style={{ color: activePage === item.id ? '#F5A623' : 'rgba(255,255,255,0.5)', fontSize: '9px', fontWeight: activePage === item.id ? '700' : '400' }}>
-            {item.label}
-          </span>
+          <span style={{ color: activePage === item.id ? '#F5A623' : 'rgba(255,255,255,0.5)', fontSize: '9px', fontWeight: activePage === item.id ? '700' : '400' }}>{item.label}</span>
         </button>
       ))}
     </div>
@@ -709,9 +693,7 @@ export default function Dashboard() {
       return (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <button onClick={() => setPosReceipt(null)} style={{ background: '#F3F4F6', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
-              ← New Order
-            </button>
+            <button onClick={() => setPosReceipt(null)} style={{ background: '#F3F4F6', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#374151' }}>← New Order</button>
             <h2 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '700', margin: 0 }}>Order #{posReceipt.order.id}</h2>
           </div>
           <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
@@ -749,6 +731,9 @@ export default function Dashboard() {
     if (mobileView === 'cart') {
       return (
         <div>
+          {showMpesaModal && (
+            <MpesaModal onClose={() => { setShowMpesaModal(false); setMpesaPhone('') }} />
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: 0 }}>Cart ({getTotalItems()})</h2>
             <button onClick={() => setMobileView('products')} style={{ background: '#F3F4F6', border: 'none', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#374151' }}>← Products</button>
@@ -786,21 +771,6 @@ export default function Dashboard() {
               <button onClick={() => placeOrder('mpesa')} disabled={placing} style={{ width: '100%', backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '15px', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>
                 {placing ? 'Processing...' : '📱 M-Pesa Payment'}
               </button>
-              {showMpesaModal && (
-                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-                  <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%' }}>
-                    <h3 style={{ color: '#0A1F44', fontSize: '18px', fontWeight: '700', margin: '0 0 6px' }}>M-Pesa Payment</h3>
-                    <p style={{ color: '#F5A623', fontSize: '16px', fontWeight: '700', margin: '0 0 16px' }}>Total: KES {getTotal().toLocaleString()}</p>
-                    <input value={mpesaPhone} onChange={e => setMpesaPhone(e.target.value)} placeholder="e.g. 0712345678" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '15px', marginBottom: '16px', boxSizing: 'border-box' }} />
-                    <button onClick={processMpesaPayment} style={{ width: '100%', backgroundColor: '#0A1F44', color: '#fff', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '10px' }}>
-                      Send M-Pesa Request
-                    </button>
-                    <button onClick={() => { setShowMpesaModal(false); setMpesaPhone('') }} style={{ width: '100%', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -821,11 +791,7 @@ export default function Dashboard() {
           {products.map(product => {
             const qty = getCartQuantity(product.id)
             return (
-              <div
-                key={product.id}
-                onClick={() => addToCart({ ...product, price: parseFloat(product.price), stock: parseInt(product.stock) })}
-                style={{ background: qty > 0 ? '#FFFBF0' : '#fff', borderRadius: '14px', padding: '14px', textAlign: 'center', borderWidth: '1px', borderStyle: 'solid', borderColor: qty > 0 ? '#F5A623' : '#E5E7EB', cursor: 'pointer', position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
-              >
+              <div key={product.id} onClick={() => addToCart({ ...product, price: parseFloat(product.price), stock: parseInt(product.stock) })} style={{ background: qty > 0 ? '#FFFBF0' : '#fff', borderRadius: '14px', padding: '14px', textAlign: 'center', borderWidth: '1px', borderStyle: 'solid', borderColor: qty > 0 ? '#F5A623' : '#E5E7EB', cursor: 'pointer', position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                 {qty > 0 && (
                   <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#F5A623', borderRadius: '10px', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: '11px', fontWeight: '700', color: '#0A1F44' }}>{qty}</span>
