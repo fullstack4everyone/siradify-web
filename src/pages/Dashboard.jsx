@@ -95,20 +95,30 @@ export default function Dashboard() {
     } catch (err) { console.error(err) }
   }
 
+  // Sales for the last 7 days, oldest first, ending with today.
   const buildSalesData = (ordersData) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    const salesByDay = {}
-    days.forEach(d => salesByDay[d] = 0)
-    const now = new Date()
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const toKey = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const days = []
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+      days.push({ key: toKey(date), day: i === 0 ? 'Today' : dayNames[date.getDay()], sales: 0 })
+    }
+
+    const indexByKey = {}
+    days.forEach((d, i) => { indexByKey[d.key] = i })
+
     ordersData.forEach(order => {
-      const orderDate = new Date(order.created_at)
-      if (orderDate >= weekAgo) {
-        const day = days[orderDate.getDay()]
-        salesByDay[day] += parseFloat(order.total)
-      }
+      const i = indexByKey[toKey(new Date(order.created_at))]
+      if (i !== undefined) days[i].sales += parseFloat(order.total) || 0
     })
-    setSalesData(days.map(day => ({ day, sales: salesByDay[day] })))
+
+    setSalesData(days.map(({ day, sales }) => ({ day, sales })))
   }
 
   const totalRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total), 0)
@@ -463,7 +473,7 @@ export default function Dashboard() {
           <StatCard title="Cash" value={`KES ${cashRevenue.toLocaleString()}`} sub={`${cashOrders.length} orders`} color="#6366F1" />
         </div>
         <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', marginBottom: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ color: '#0A1F44', fontSize: '15px', fontWeight: '600', margin: '0 0 16px' }}>Sales This Week</h3>
+          <h3 style={{ color: '#0A1F44', fontSize: '15px', fontWeight: '600', margin: '0 0 16px' }}>Sales in the Last 7 Days</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={salesData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -766,7 +776,7 @@ export default function Dashboard() {
                 <StatCard title="Pending" value={pendingCount} sub="Needs attention" color="#EF4444" />
               </div>
               <div style={{ background: '#ffffff', borderRadius: '12px', padding: '16px', marginBottom: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                <h3 style={{ color: '#0A1F44', fontSize: '14px', fontWeight: '600', margin: '0 0 14px' }}>Sales This Week</h3>
+                <h3 style={{ color: '#0A1F44', fontSize: '14px', fontWeight: '600', margin: '0 0 14px' }}>Sales in the Last 7 Days</h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={salesData}>
                     <defs>
@@ -870,7 +880,7 @@ export default function Dashboard() {
               <StatCard title="Low Stock" value={lowStockProducts.length} sub="Need restocking" color="#F59E0B" />
             </div>
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-              <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Sales This Week (Real Data)</h3>
+              <h3 style={{ color: '#0A1F44', fontSize: '16px', fontWeight: '600', margin: '0 0 20px' }}>Sales in the Last 7 Days</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={salesData}>
                   <defs>
