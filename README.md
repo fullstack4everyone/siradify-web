@@ -3,6 +3,7 @@
 A point-of-sale system for small shops in Kenya and Somalia. Sell, track stock, accept M-Pesa and cash, and get a sales report in your inbox every night.
 
 Live app: https://siradify-pos.vercel.app
+
 Built by SIRAD CODES: https://sirad-codes.vercel.app
 
 ![Siradify POS dashboard](https://sirad-codes.vercel.app/images/projects/siradify-pos.webp)
